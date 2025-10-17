@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI 生成功能
   ai: {
     generate: (prompt: string, option: string, command?: string) => ipcRenderer.invoke('ai:generate', prompt, option, command),
+    generateStream: (prompt: string, option: string, command?: string) => ipcRenderer.invoke('ai:generateStream', prompt, option, command),
   },
   // 设置管理功能
   settings: {
@@ -40,6 +41,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onWorkspaceOpened: (callback: (workspacePath: string) => void) => {
       ipcRenderer.on('workspace:opened', (_, workspacePath: string) => callback(workspacePath));
     },
+  },
+  // IPC 事件监听器
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.on(channel, callback);
+  },
+  removeListener: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.removeListener(channel, callback);
   },
 });
 
@@ -75,11 +83,15 @@ declare global {
       };
       ai: {
         generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;
+        generateStream: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;
       };
       settings: {
         getApiKey: () => Promise<{ success: boolean; apiKey?: string; error?: string }>;
         setApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
       };
+      // IPC 事件监听器
+      on: (channel: string, callback: (...args: any[]) => void) => void;
+      removeListener: (channel: string, callback: (...args: any[]) => void) => void;
     };
   }
 }

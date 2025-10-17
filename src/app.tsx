@@ -292,8 +292,8 @@ const App: React.FC = () => {
           handleCopyAction={handleCopyAction}
         />
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="px-4 py-2 border-b border-gray-200 bg-white">
+      <div className="flex-1 min-w-0 h-screen overflow-hidden flex flex-col">
+        <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -306,7 +306,8 @@ const App: React.FC = () => {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <SectionEditPage 
+        <div className="flex-1 overflow-y-auto">
+          <SectionEditPage 
           copy={
             currentCopy && currentCopy.id === selectedCopyId
               ? currentCopy
@@ -339,6 +340,7 @@ const App: React.FC = () => {
             setSelectedCopyId(prev => (prev === targetId ? newId : prev));
           }}
         />
+        </div>
       </div>
     </div>
   );

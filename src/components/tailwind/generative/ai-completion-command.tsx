@@ -20,14 +20,19 @@ const AICompletionCommands = ({
           onSelect={() => {
             if (!editor) return;
             const selection = editor.view.state.selection;
+            const docSize = editor.view.state.doc.content.size;
+
+            // 确保选择范围在文档范围内
+            const safeFrom = Math.min(selection.from, docSize);
+            const safeTo = Math.min(selection.to, docSize);
 
             editor
               .chain()
               .focus()
               .insertContentAt(
                 {
-                  from: selection.from,
-                  to: selection.to,
+                  from: safeFrom,
+                  to: safeTo,
                 },
                 completion,
               )
@@ -43,10 +48,15 @@ const AICompletionCommands = ({
           onSelect={() => {
             if (!editor) return;
             const selection = editor.view.state.selection;
+            const docSize = editor.view.state.doc.content.size;
+            
+            // 确保插入位置不超出文档范围
+            const insertPosition = Math.min(selection.to + 1, docSize);
+            
             editor
               .chain()
               .focus()
-              .insertContentAt(selection.to + 1, completion)
+              .insertContentAt(insertPosition, completion)
               .run();
           }}
         >

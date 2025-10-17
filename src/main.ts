@@ -33,10 +33,6 @@ const writeJsonSafe = (filePath: string, data: any) => {
   }
 };
 
-
-
-
-
 // 统一文件名生成与重命名的清洗规则（顶层函数）
 const sanitizeFileBase = (s: string): string => {
   try {
@@ -566,7 +562,7 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
       { role: "user", content: userContent }
     ];
 
-    // 使用 fetch 调用 DeepSeek API
+    // 使用 fetch 调用 DeepSeek API (流式响应)
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -575,7 +571,7 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
       },
       body: JSON.stringify({
         model: "deepseek-chat",
-        stream: false,
+        stream: true,
         temperature: 1.2,
         messages,
       }),
@@ -585,12 +581,10 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
       throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-
+    // 返回流式响应的 ReadableStream
     return {
       success: true,
-      content: content
+      stream: response.body
     };
   } catch (err) {
     console.error('Error ai:generate:', err);
@@ -598,5 +592,97 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
       success: false, 
       error: String(err) 
     };
+  }
+});
+
+// 流式AI生成处理器
+ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string, command?: string) => {
+  try {
+    // 获取API密钥
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    const config = readJsonSafe(configPath);
+    
+    let apiKey = '';
+    if (config && config.encryptedApiKey) {
+      apiKey = safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
+    }
+    
+    if (!apiKey) {
+      throw new Error("请先在设置中配置 DeepSeek API Key");
+    }
+
+    const BASE_ROLE = "你是youtube视频博主，拥有百万粉丝账号操盘经验.";
+    
+    const messageMap = {
+      generate: { role: "system", content: BASE_ROLE + "根据现有内容写一篇完整的文案\n▼ 核心要求\n● 首行必须生成3个爆款标题选项（emoji+数字标题）\n● 后半段优先安排转化触发点\n● 结尾预留互动话术接口\n" },
+      improve: { role: "system", content: BASE_ROLE + "根据输入的文稿进行文本润色，要求文本正式，内容精简严肃，抓住用户痛点吸引用户观看，只返回处理后的文稿。" },
+      shorter: { role: "system", content: BASE_ROLE + "根据输入的文稿进行高质量文本摘要，只返回处理后内容。" },
+      longer: { role: "system", content: BASE_ROLE + "根据输入的文稿进行文本续写，要求文本正式，内容精简严肃，只返回续写的内容。" },
+      fix: { role: "system", content: BASE_ROLE + "润色文案,修复语法和拼写错误，返回需要修改语法和拼写的点，无需返回完整文本\n" },
+      zap: { role: "system", content: BASE_ROLE + "根据输入的文稿和要求进行文本修改在适当的时候使用Markdown格式。" }
+    };
+
+    const systemMessage = messageMap[option as keyof typeof messageMap] || messageMap.generate;
+    const userContent = option === 'zap' ? `对于这段文本：${prompt}。你必须遵守这些要求：${command}` : 
+                       option === 'generate' ? prompt : `现有文本是：${prompt}`;
+
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        stream: true,
+        temperature: 1.2,
+        messages: [systemMessage, { role: "user", content: userContent }],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    // 类似Next.js的简洁流处理
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保留最后一行（可能不完整）
+        
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            event.sender.send('ai:streamComplete');
+            return { success: true };
+          }
+          
+          try {
+            const { choices } = JSON.parse(data);
+            const content = choices[0]?.delta?.content;
+            if (content) {
+              event.sender.send('ai:streamChunk', content);
+            }
+          } catch {}
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    
+    return { success: true };
+  } catch (err) {
+    event.sender.send('ai:streamError', String(err));
+    return { success: false, error: String(err) };
   }
 });
