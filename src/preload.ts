@@ -13,7 +13,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createJsonFile: (copy: any) => ipcRenderer.invoke('fs:createJsonFile', copy),
     renameJsonFile: (oldId: string, newName: string) => ipcRenderer.invoke('fs:renameJsonFile', oldId, newName),
     deleteJsonFile: (id: string) => ipcRenderer.invoke('fs:deleteJsonFile', id),
-
+    
+    // 图片保存功能
+    saveImage: (imageBuffer: Uint8Array, fileName: string) => ipcRenderer.invoke('fs:saveImage', imageBuffer, fileName),
+  },
+  // AI 生成功能
+  ai: {
+    generate: (prompt: string, option: string, command?: string) => ipcRenderer.invoke('ai:generate', prompt, option, command),
+  },
+  // 设置管理功能
+  settings: {
+    getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
+    setApiKey: (apiKey: string) => ipcRenderer.invoke('settings:setApiKey', apiKey),
   },
   // UI / 菜单事件
   ui: {
@@ -58,7 +69,16 @@ declare global {
         createJsonFile: (copy: any) => Promise<{ success: boolean; fileName: string }>;
         renameJsonFile: (oldId: string, newName: string) => Promise<{ success: boolean; id?: string; error?: string }>;
         deleteJsonFile: (id: string) => Promise<{ success: boolean }>;
-
+        
+        // 图片保存功能类型声明
+        saveImage: (imageBuffer: Uint8Array, fileName: string) => Promise<{ success: boolean; fileName?: string; relativePath?: string; fullPath?: string; error?: string }>;
+      };
+      ai: {
+        generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;
+      };
+      settings: {
+        getApiKey: () => Promise<{ success: boolean; apiKey?: string; error?: string }>;
+        setApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
       };
     };
   }

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import ApiKeySettings from '../settings/ApiKeySettings';
 
 import { Copy } from '../../types/Model';
 
@@ -156,17 +157,20 @@ export default function NotionSidebar({
         </Dialog>
       </div>
 
-      <div className="flex justify-between my-4">
-        <h2 className="text-lg font-semibold">项目文案管理</h2>
-        <span 
-          className='cursor-pointer'
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddCopy();
-          }}
-        >
-          <Plus className="h-4 w-4" />
-        </span>
+      <div className="flex justify-between items-center my-4">
+        <h2 className="text-lg font-semibold">文案列表</h2>
+        <div className="flex items-center gap-2">
+          <ApiKeySettings />
+          <span 
+            className='cursor-pointer'
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddCopy();
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">

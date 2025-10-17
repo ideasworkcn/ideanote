@@ -2,72 +2,44 @@ import { createImageUpload } from "novel/plugins";
 import { toast } from "sonner";
 
 const onUpload = (file: File) => {
-  console.log("File name:", file.name);
-  console.log("File type:", file.type);
-  console.log("File size:", file.size);
-  
-  const safeFilename = file.name.replace(/[^\u0020-\u007E]/g, '').replace(/\s+/g, '_');
-  console.log(safeFilename);
+  const promise = new Promise<string>(async (resolve, reject) => {
+    try {
+      console.log("开始上传图片:", file.name, "大小:", file.size, "类型:", file.type);
+      
+      // 检查文件类型
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('只支持图片文件'));
+        return;
+      }
 
-  console.log("Attempting to call fetch...");
-  
-  // 获取token
-  const token = localStorage.getItem('token');
-  
-  const promise = fetch("/api/upload/local-img", {
-    method: "POST",
-    headers: {
-      "content-type": file?.type || "application/octet-stream",
-      "x-vercel-filename": safeFilename || "image.png",
-      "Authorization": `Bearer ${token}`, // 添加Authorization头部
-    },
-    body: file,
-  }).catch((error) => {
-    console.error("Fetch error:", error);
-    throw error;
+      // 将文件转换为ArrayBuffer，然后转换为Uint8Array
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // 调用Electron API保存图片到本地
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI?.filesystem?.saveImage) {
+        reject(new Error('图片保存功能不可用'));
+        return;
+      }
+
+      console.log("调用Electron API保存图片...");
+       const result = await electronAPI.filesystem.saveImage(uint8Array, file.name);
+      
+      if (result.success && result.relativePath) {
+        console.log("图片保存成功:", result.relativePath);
+        resolve(result.relativePath);
+      } else {
+        console.error("图片保存失败:", result.error);
+        reject(new Error(result.error || '图片保存失败'));
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      reject(error);
+    }
   });
 
-  console.log("Fetch promise created");
-
-  return new Promise((resolve, reject) => {
-    toast.promise(
-      promise.then(async (res) => {
-        // Successfully uploaded image
-        if (res.status === 200) {
-          const { url } = (await res.json()) as { url: string };
-          // preload the image
-          const image = new Image();
-          image.src = url;
-          image.onload = () => {
-            resolve(url);
-          };
-        } else if (res.status === 401) {
-          resolve(file);
-          throw new Error("`BLOB_READ_WRITE_TOKEN` environment variable not found, reading image locally instead.");
-        } else if (res.status === 413) {
-          // 处理存储空间不足错误
-          const errorData = await res.json();
-          throw new Error(`存储空间不足：已使用 ${errorData.details?.currentUsage}MB / ${errorData.details?.limit}MB`);
-        } else {
-          // 尝试获取详细错误信息
-          try {
-            const errorData = await res.json();
-            throw new Error(errorData.error || "Error uploading image. Please try again.");
-          } catch {
-            throw new Error("Error uploading image. Please try again.");
-          }
-        }
-      }),
-      {
-        loading: "Uploading image...",
-        success: "Image uploaded successfully.",
-        error: (e) => {
-          reject(e);
-          return e.message;
-        },
-      },
-    );
-  });
+  return promise;
 };
 
 export const uploadFn = createImageUpload({

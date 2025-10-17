@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, safeStorage } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import fs from 'node:fs';
@@ -399,5 +399,204 @@ ipcMain.handle('fs:deleteJsonFile', async (_event, id: string) => {
   } catch (err) {
     console.error('Error fs:deleteJsonFile:', err);
     throw err;
+  }
+});
+
+// 图片保存：将图片保存到工作目录的images文件夹
+ipcMain.handle('fs:saveImage', async (_event, imageBuffer: Uint8Array, fileName: string) => {
+  try {
+    // 确保images文件夹存在
+    const imagesDir = path.join(workspaceRoot, 'images');
+    fs.mkdirSync(imagesDir, { recursive: true });
+    
+    // 生成唯一的文件名
+    const ext = path.extname(fileName) || '.png';
+    const baseName = path.basename(fileName, ext);
+    const sanitizedBaseName = sanitizeFileBase(baseName);
+    
+    let finalFileName = `${sanitizedBaseName}${ext}`;
+    let finalPath = path.join(imagesDir, finalFileName);
+    let counter = 1;
+    
+    // 如果文件已存在，添加数字后缀
+    while (fs.existsSync(finalPath)) {
+      finalFileName = `${sanitizedBaseName}-${counter}${ext}`;
+      finalPath = path.join(imagesDir, finalFileName);
+      counter++;
+    }
+    
+    // 将Uint8Array转换为Buffer并保存图片文件
+    const buffer = Buffer.from(imageBuffer);
+    fs.writeFileSync(finalPath, buffer);
+    
+    // 返回file://协议的绝对路径，用于在编辑器中引用
+    const fileUrl = `file://${finalPath}`;
+    
+    
+    return { 
+      success: true, 
+      fileName: finalFileName,
+      relativePath: fileUrl,
+      fullPath: finalPath
+    };
+  } catch (err) {
+    console.error('Error fs:saveImage:', err);
+    return { 
+      success: false, 
+      error: String(err) 
+    };
+  }
+});
+
+// API Key 安全存储管理
+ipcMain.handle('settings:getApiKey', async () => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    const config = readJsonSafe(configPath);
+    
+    if (config && config.encryptedApiKey) {
+      // 解密存储的 API Key
+      const decrypted = safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
+      return { success: true, apiKey: decrypted };
+    }
+    
+    return { success: true, apiKey: '' };
+  } catch (err) {
+    console.error('Error getting API key:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('settings:setApiKey', async (_event, apiKey: string) => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    
+    if (apiKey.trim() === '') {
+      // 删除 API Key
+      const config = readJsonSafe(configPath) || {};
+      delete config.encryptedApiKey;
+      writeJsonSafe(configPath, config);
+      return { success: true };
+    }
+    
+    // 加密并存储 API Key
+    const encrypted = safeStorage.encryptString(apiKey);
+    const config = readJsonSafe(configPath) || {};
+    config.encryptedApiKey = encrypted.toString('base64');
+    
+    writeJsonSafe(configPath, config);
+    return { success: true };
+  } catch (err) {
+    console.error('Error setting API key:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// AI 生成：处理 AI 文本生成请求
+ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, command?: string) => {
+  try {
+    // 从安全存储中获取 API Key
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    const config = readJsonSafe(configPath);
+    
+    let apiKey = '';
+    if (config && config.encryptedApiKey) {
+      try {
+        apiKey = safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
+      } catch (decryptErr) {
+        console.error('Failed to decrypt API key:', decryptErr);
+      }
+    }
+    
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error("请先在设置中配置 DeepSeek API Key");
+    }
+
+    const BASE_ROLE = "你是youtube视频博主，拥有百万粉丝账号操盘经验.";
+    const COMMON_REQUIREMENTS = 
+      "◆ 始终使用口语化表达\n" + 
+      "◆ 采用「悬念前置+信息密度」结构\n" + 
+      "◆ 每15秒设置一个剧情钩子\n";
+
+    let systemContent = "";
+    let userContent = "";
+
+    switch (option) {
+      case "generate":
+        systemContent = BASE_ROLE + 
+          "根据现有内容写一篇完整的文案\n" + 
+          "▼ 核心要求\n" + 
+          "● 首行必须生成3个爆款标题选项（emoji+数字标题）\n" + 
+          "● 后半段优先安排转化触发点\n" + 
+          "● 结尾预留互动话术接口\n";
+        userContent = prompt;
+        break;
+      case "improve":
+        systemContent = BASE_ROLE + 
+          "根据输入的文稿进行文本润色，要求文本正式，内容精简严肃，抓住用户痛点吸引用户观看，只返回处理后的文稿。";
+        userContent = `现有文本是：${prompt}`;
+        break;
+      case "shorter":
+        systemContent = BASE_ROLE + 
+          "根据输入的文稿进行高质量文本摘要，只返回处理后内容。";
+        userContent = `现有文本是：${prompt}`;
+        break;
+      case "longer":
+        systemContent = BASE_ROLE + 
+          "根据输入的文稿进行文本续写，要求文本正式，内容精简严肃，只返回续写的内容。";
+        userContent = `现有文本是：${prompt}`;
+        break;
+      case "fix":
+        systemContent = BASE_ROLE + 
+          "润色文案,修复语法和拼写错误，返回需要修改语法和拼写的点，无需返回完整文本\n";
+        userContent = `现有文本是：${prompt}`;
+        break;
+      case "zap":
+        systemContent = BASE_ROLE + 
+          "根据输入的文稿和要求进行文本修改" + 
+          "在适当的时候使用Markdown格式。";
+        userContent = `对于这段文本：${prompt}。你必须遵守这些要求：${command}`;
+        break;
+      default:
+        throw new Error("Unknown option: " + option);
+    }
+
+    const messages = [
+      { role: "system", content: systemContent },
+      { role: "user", content: userContent }
+    ];
+
+    // 使用 fetch 调用 DeepSeek API
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        stream: false,
+        temperature: 1.2,
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    return {
+      success: true,
+      content: content
+    };
+  } catch (err) {
+    console.error('Error ai:generate:', err);
+    return { 
+      success: false, 
+      error: String(err) 
+    };
   }
 });

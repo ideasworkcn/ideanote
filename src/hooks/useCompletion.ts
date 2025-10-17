@@ -23,47 +23,16 @@ export function useCompletion(options: UseCompletionOptions = {}) {
     setError(null);
 
     try {
-      const response = await fetch(options.api || '/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ prompt: prompt,...completeOptions?.body} ),
-      });
+      // 使用 Electron API 而不是 fetch
+      const { option, command } = completeOptions?.body || {};
+      const result = await window.electronAPI.ai.generate(prompt, option || 'generate', command);
 
-      if (options.onResponse) {
-        options.onResponse(response);
+      if (!result.success) {
+        throw new Error(result.error || 'AI generation failed');
       }
 
-      // 处理 429 状态码
-      if (response.status === 429) {
-        const limitInfo = await response.json();
-        if (options.onLimitReached) {
-          options.onLimitReached(limitInfo);
-        }
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const reader = response.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        let result = '';
-        
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          result += chunk;
-          setCompletion(result);
-        }
-      }
+      // 直接设置完成的内容（非流式）
+      setCompletion(result.content || '');
     } catch (err) {
       const error = err instanceof Error ? err : new Error('An unknown error occurred');
       setError(error);
