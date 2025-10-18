@@ -3,9 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 // 暴露安全的文件系统 API 给渲染进程（统一入口）
 contextBridge.exposeInMainWorld('electronAPI', {
   filesystem: {
-    // 列出工作区的 JSON 文件（扁平）
+    // 基础文件系统操作
     listJsonFiles: () => ipcRenderer.invoke('fs:listJsonFiles'),
-    // 读取 / 写入 JSON 文件
     readJsonFile: (id: string) => ipcRenderer.invoke('fs:readJsonFile', id),
     writeJsonFile: (id: string, content: string) => ipcRenderer.invoke('fs:writeJsonFile', id, content),
     // 主题与文案的辅助方法（仍基于 FS）
@@ -13,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createJsonFile: (copy: any) => ipcRenderer.invoke('fs:createJsonFile', copy),
     renameJsonFile: (oldId: string, newName: string) => ipcRenderer.invoke('fs:renameJsonFile', oldId, newName),
     deleteJsonFile: (id: string) => ipcRenderer.invoke('fs:deleteJsonFile', id),
+    
+    // 工作区选择
+    selectWorkspace: () => ipcRenderer.invoke('fs:selectWorkspace'),
     
     // 图片保存功能
     saveImage: (imageBuffer: Uint8Array, fileName: string) => ipcRenderer.invoke('fs:saveImage', imageBuffer, fileName),

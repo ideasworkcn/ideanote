@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import SectionEditPage from './notion';
 import NotionSidebar from './components/notion/NotionSidebar';
+import WelcomePage from './components/WelcomePage';
 import { Copy } from './types/Model';
 import { novelcopy } from './lib/copyContent';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
@@ -12,6 +13,9 @@ const App: React.FC = () => {
   const [copies, setCopies] = useState<Copy[]>([]);
   // 跟踪工作区名称（替代 topic）
   const [workspaceId, setWorkspaceId] = useState<string>('workspace');
+  // 欢迎页面状态
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [workspacePath, setWorkspacePath] = useState<string>('');
 
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -214,8 +218,46 @@ const App: React.FC = () => {
         setLoading(false);
       }
     };
-    loadData();
-  }, []);
+    
+    // 只有在不显示欢迎页面时才加载数据
+    if (!showWelcome) {
+      loadData();
+    }
+  }, [showWelcome]);
+
+  // 监听工作区打开事件
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (!api || !api.ui) return;
+
+    // 监听工作区打开事件
+    api.ui.onWorkspaceOpened(async (workspacePath: string) => {
+      setWorkspacePath(workspacePath);
+      setWorkspaceId(getBasename(workspacePath));
+      setShowWelcome(false); // 隐藏欢迎页面
+      
+      // 重新加载新工作区的数据
+      try {
+        setLoading(true);
+        const updated = await getAllCopiesFromFilesystem();
+        setCopies(updated);
+        // 重置选中的文案
+        setSelectedCopyId('');
+        setCurrentCopy(null);
+        // 如果有文案，选中第一个
+        if (Array.isArray(updated) && updated.length > 0) {
+          const firstCopy = updated[0];
+          if (firstCopy) {
+            setSelectedCopyId(firstCopy.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data after workspace change:', error);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, [getBasename, getAllCopiesFromFilesystem]);
 
   // 监听主进程菜单事件：保存 / 新建文案 / 打开工作区
   useEffect(() => {
@@ -274,9 +316,33 @@ const App: React.FC = () => {
     }
   };
 
+  // 欢迎页面处理函数
+  const handleSelectWorkspace = useCallback(async () => {
+    try {
+      const api = (window as any).electronAPI;
+      if (api && api.filesystem && api.filesystem.selectWorkspace) {
+        await api.filesystem.selectWorkspace();
+      }
+    } catch (error) {
+      console.error('Error selecting workspace:', error);
+    }
+  }, []);
+
+  const handleUseDefault = useCallback(() => {
+    setShowWelcome(false);
+  }, []);
+
   return (
     <div className="flex min-h-screen">
-      <div className="w-72 border-r border-gray-200 bg-white">
+      {showWelcome ? (
+        <WelcomePage 
+          onSelectWorkspace={handleSelectWorkspace}
+          onUseDefault={handleUseDefault}
+          workspacePath={workspacePath}
+        />
+      ) : (
+        <>
+          <div className="w-72 border-r border-gray-200 bg-white">
         <NotionSidebar 
           searchDialogOpen={searchDialogOpen}
           setSearchDialogOpen={setSearchDialogOpen}
@@ -342,6 +408,8 @@ const App: React.FC = () => {
         />
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

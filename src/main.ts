@@ -119,6 +119,128 @@ async function initializeWorkspaceWithPrompt() {
   }
 }
 
+function createApplicationMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: '文件',
+      submenu: [
+        {
+          label: '新建文案',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow?.webContents.send('menu:new-note');
+          }
+        },
+        {
+          label: '保存',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            mainWindow?.webContents.send('menu:save');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: '选择工作区',
+          click: async () => {
+            try {
+              const result = await dialog.showOpenDialog({
+                title: '选择工作区文件夹',
+                properties: ['openDirectory', 'createDirectory'],
+                defaultPath: workspaceRoot,
+              });
+              
+              if (!result.canceled && result.filePaths && result.filePaths[0]) {
+                const newWorkspaceRoot = result.filePaths[0];
+                workspaceRoot = newWorkspaceRoot;
+                fs.mkdirSync(workspaceRoot, { recursive: true });
+                
+                // 保存新的工作区路径
+                const cfgPath = path.join(app.getPath('userData'), 'workspace-config.json');
+                try {
+                  fs.writeFileSync(cfgPath, JSON.stringify({ path: workspaceRoot }, null, 2));
+                } catch (e) {
+                  console.error('保存工作区路径失败:', e);
+                }
+                
+                // 通知渲染进程工作区已更改
+                notifyWorkspaceOpened();
+              }
+            } catch (e) {
+              console.error('选择工作区失败:', e);
+            }
+          }
+        }
+      ]
+    },
+    {
+      label: '编辑',
+      submenu: [
+        { role: 'undo', label: '撤销' },
+        { role: 'redo', label: '重做' },
+        { type: 'separator' },
+        { role: 'cut', label: '剪切' },
+        { role: 'copy', label: '复制' },
+        { role: 'paste', label: '粘贴' },
+        { role: 'selectAll', label: '全选' }
+      ]
+    },
+    {
+      label: '视图',
+      submenu: [
+        { role: 'reload', label: '重新加载' },
+        { role: 'forceReload', label: '强制重新加载' },
+        { role: 'toggleDevTools', label: '开发者工具' },
+        { type: 'separator' },
+        { role: 'resetZoom', label: '实际大小' },
+        { role: 'zoomIn', label: '放大' },
+        { role: 'zoomOut', label: '缩小' },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: '切换全屏' }
+      ]
+    },
+    {
+      label: '窗口',
+      submenu: [
+        { role: 'minimize', label: '最小化' },
+        { role: 'close', label: '关闭' }
+      ]
+    }
+  ];
+
+  // macOS 特殊处理
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.getName(),
+      submenu: [
+        { role: 'about', label: '关于 ' + app.getName() },
+        { type: 'separator' },
+        { role: 'services', label: '服务', submenu: [] },
+        { type: 'separator' },
+        { role: 'hide', label: '隐藏 ' + app.getName() },
+        { role: 'hideOthers', label: '隐藏其他' },
+        { role: 'unhide', label: '显示全部' },
+        { type: 'separator' },
+        { role: 'quit', label: '退出 ' + app.getName() }
+      ]
+    });
+
+    // 窗口菜单
+    const windowMenu = template.find(item => item.label === '窗口');
+    if (windowMenu && windowMenu.submenu) {
+      (windowMenu.submenu as Electron.MenuItemConstructorOptions[]) = [
+        { role: 'close', label: '关闭' },
+        { role: 'minimize', label: '最小化' },
+        { role: 'zoom', label: '缩放' },
+        { type: 'separator' },
+        { role: 'front', label: '全部置于前面' }
+      ];
+    }
+  }
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -130,6 +252,9 @@ function createWindow() {
       webSecurity: false, // 允许加载本地资源
     },
   });
+  
+  // 创建应用菜单
+  createApplicationMenu();
   
   // 在开发环境下打开开发者工具
   if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
@@ -164,7 +289,8 @@ function registerIpcHandlers() {
 }
 
 app.whenReady().then(async () => {
-  await initializeWorkspaceWithPrompt();
+  // 不再自动弹出工作区选择对话框，让欢迎页面处理
+  ensureWorkspace(); // 只确保有默认工作区
   createWindow();
   registerIpcHandlers();
   // 等待页面加载完成后通知渲染进程工作区路径，以触发数据刷新
@@ -215,6 +341,41 @@ ipcMain.handle('fs:listJsonFiles', async () => {
   } catch (e) {
     console.error('fs:listJsonFiles failed:', e);
     return [];
+  }
+});
+
+// 选择工作区文件夹
+ipcMain.handle('fs:selectWorkspace', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      title: '选择工作区文件夹',
+      properties: ['openDirectory', 'createDirectory'],
+      defaultPath: workspaceRoot,
+    });
+    
+    if (!result.canceled && result.filePaths && result.filePaths[0]) {
+      const newWorkspaceRoot = result.filePaths[0];
+      workspaceRoot = newWorkspaceRoot;
+      fs.mkdirSync(workspaceRoot, { recursive: true });
+      
+      // 保存新的工作区路径
+      const cfgPath = path.join(app.getPath('userData'), 'workspace-config.json');
+      try {
+        fs.writeFileSync(cfgPath, JSON.stringify({ path: workspaceRoot }, null, 2));
+      } catch (e) {
+        console.error('保存工作区路径失败:', e);
+      }
+      
+      // 通知渲染进程工作区已更改
+      notifyWorkspaceOpened();
+      
+      return { success: true, path: workspaceRoot };
+    }
+    
+    return { success: false, error: 'User cancelled' };
+  } catch (e) {
+    console.error('fs:selectWorkspace failed:', e);
+    return { success: false, error: String(e) };
   }
 });
 
