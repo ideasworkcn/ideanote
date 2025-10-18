@@ -1,19 +1,20 @@
 // https://vitejs.dev/config
-const { defineConfig } = require('vite');
-const path = require('path');
-
-module.exports = defineConfig({
+module.exports = async () => {
+  const { defineConfig } = await import('vite');
+  const path = await import('path');
+  
+  return defineConfig({
   css: {
     postcss: {
       plugins: [
-        require('@tailwindcss/postcss'),
-        require('autoprefixer'),
+        (await import('@tailwindcss/postcss')).default,
+        (await import('autoprefixer')).default,
       ],
     },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@': path.default.resolve(__dirname, 'src'),
     },
   },
   build: {
@@ -34,3 +35,4 @@ module.exports = defineConfig({
     },
   },
 });
+};
