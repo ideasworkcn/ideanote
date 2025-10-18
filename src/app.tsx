@@ -6,6 +6,7 @@ import WelcomePage from './components/WelcomePage';
 import { Copy } from './types/Model';
 import { novelcopy } from './lib/copyContent';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { AboutDialog } from '@/components/AboutDialog';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -26,6 +27,8 @@ const App: React.FC = () => {
   const [currentCopy, setCurrentCopy] = useState<Copy | null>(null);
   // 加载防抖令牌：仅接受最后一次选中对应的加载结果，避免竞态覆盖
   const latestLoadIdRef = useRef<string | null>(null);
+  // 关于对话框状态
+  const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
 
   // 简易 basename 提取（无 node:path）
   const getBasename = useCallback((p: string) => {
@@ -242,7 +245,7 @@ const App: React.FC = () => {
         const updated = await getAllCopiesFromFilesystem();
         setCopies(updated);
         // 重置选中的文案
-        setSelectedCopyId('');
+        setSelectedCopyId(null);
         setCurrentCopy(null);
         // 如果有文案，选中第一个
         if (Array.isArray(updated) && updated.length > 0) {
@@ -278,6 +281,19 @@ const App: React.FC = () => {
     api.ui.onMenuNewNote(() => {
       try { onAddCopy(); } catch (e) { console.warn('menu:new-note failed:', e); }
     });
+
+    // 监听关于页面菜单事件
+    const handleShowAbout = () => {
+      setAboutDialogOpen(true);
+    };
+    
+    // 添加菜单事件监听器
+    api.on('menu:show-about', handleShowAbout);
+    
+    // 清理函数
+    return () => {
+      api.removeListener('menu:show-about', handleShowAbout);
+    };
   }, [onAddCopy]);
 
   const handleCopyAction = async (action: string, copyId: string, payload?: any) => {
@@ -410,6 +426,12 @@ const App: React.FC = () => {
       </div>
         </>
       )}
+      
+      {/* 关于对话框 */}
+      <AboutDialog 
+        open={aboutDialogOpen} 
+        onOpenChange={setAboutDialogOpen} 
+      />
     </div>
   );
 };

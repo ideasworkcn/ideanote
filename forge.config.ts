@@ -9,6 +9,9 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 const config = {
   packagerConfig: {
     asar: true,
+    name: 'IdeaNote',
+    executableName: 'IdeaNote',
+    icon: './assets/icon',
   },
   rebuildConfig: {},
   makers: [

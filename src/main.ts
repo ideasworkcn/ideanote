@@ -204,6 +204,17 @@ function createApplicationMenu() {
         { role: 'minimize', label: '最小化' },
         { role: 'close', label: '关闭' }
       ]
+    },
+    {
+      label: '帮助',
+      submenu: [
+        {
+          label: '关于 IdeaNote',
+          click: () => {
+            mainWindow?.webContents.send('menu:show-about');
+          }
+        }
+      ]
     }
   ];
 
@@ -245,6 +256,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    title: 'IdeaNote',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
