@@ -21,12 +21,16 @@ import mermaid from 'mermaid'
 import { createSuggestionItems , Command, renderItems } from "novel/extensions";
 import { uploadFn } from "./image-upload";
 import {  Range } from '@tiptap/core';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { createRoot } from 'react-dom/client';
 // 新增公共方法
 const createAIModal = (editor: any, prompt: string,range:Range) => {
   editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
   // 创建弹出框
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-200 bg-opacity-20';
   
   const modalContent = document.createElement('div');
   modalContent.className = 'bg-white rounded-lg shadow-lg w-full max-w-2xl h-[500px] flex flex-col';
@@ -43,7 +47,7 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   
   const confirmButton = document.createElement('button');
   confirmButton.className = 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700';
-  confirmButton.textContent = '确认插入';
+  confirmButton.textContent = '确认';
 
   const cancelButton = document.createElement('button');
   cancelButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200';
@@ -57,41 +61,105 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   document.body.appendChild(modal);
   let buffer = '';
 
+  // 使用流式数据处理逻辑
+  const handleStreamChunk = (_event: any, chunk: string) => {
+    buffer += chunk;
+    
+    // 使用React Markdown渲染器替代正则表达式
+    const root = createRoot(contentDiv);
+    root.render(
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={{
+            // 自定义组件样式
+            h1: ({ children }) => <h1 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-base font-medium mb-1 text-gray-900 dark:text-gray-100">{children}</h3>,
+            p: ({ children }) => <p className="mb-2 text-gray-800 dark:text-gray-200 leading-relaxed">{children}</p>,
+            code: ({ children, className }) => {
+              const isInline = !className;
+              return isInline ? (
+                <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400">
+                  {children}
+                </code>
+              ) : (
+                <code className={className}>{children}</code>
+              );
+            },
+            pre: ({ children }) => (
+              <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto mb-3 border dark:border-gray-700">
+                {children}
+              </pre>
+            ),
+            ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
+            li: ({ children }) => <li className="text-gray-800 dark:text-gray-200">{children}</li>,
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-700 dark:text-gray-300 mb-2">
+                {children}
+              </blockquote>
+            ),
+            strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-gray-100">{children}</strong>,
+            em: ({ children }) => <em className="italic text-gray-800 dark:text-gray-200">{children}</em>,
+            a: ({ href, children }) => (
+              <a href={href} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
+            ),
+            hr: () => <hr className="border-gray-300 dark:border-gray-600 my-4" />,
+            table: ({ children }) => (
+              <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600 mb-3">
+                {children}
+              </table>
+            ),
+            th: ({ children }) => (
+              <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-100 dark:bg-gray-800 font-semibold text-left">
+                {children}
+              </th>
+            ),
+            td: ({ children }) => (
+              <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                {children}
+              </td>
+            ),
+          }}
+        >
+          {buffer}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
+  const handleStreamComplete = () => {
+    // 流式传输完成，清理监听器
+    cleanup();
+  };
+
+  const handleStreamError = (_event: any, errorMessage: string) => {
+    contentDiv.innerHTML = `<div class="text-red-500 p-2">生成失败: ${errorMessage}</div>`;
+    cleanup();
+  };
+
+  // 清理监听器函数
+  const cleanup = () => {
+    (window as any).electronAPI.removeListener('ai:streamChunk', handleStreamChunk);
+    (window as any).electronAPI.removeListener('ai:streamComplete', handleStreamComplete);
+    (window as any).electronAPI.removeListener('ai:streamError', handleStreamError);
+  };
+
+  // 注册监听器
+  (window as any).electronAPI.on('ai:streamChunk', handleStreamChunk);
+  (window as any).electronAPI.on('ai:streamComplete', handleStreamComplete);
+  (window as any).electronAPI.on('ai:streamError', handleStreamError);
+
   // 调用AI接口进行文本续写
-  fetch('/api/ai', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ prompt }),
-  })
-  .then(response => {
-    const reader = response.body?.getReader();
-    
-    const processStream = ({ done, value }: ReadableStreamReadResult<Uint8Array>) => {
-      if (done) return;
-      
-      // 解码内容
-      const chunk = new TextDecoder().decode(value);
-      buffer += chunk;
-      
-      // 使用Tailwind的prose类来渲染Markdown样式
-      contentDiv.innerHTML = buffer
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // 加粗
-        .replace(/\*(.*?)\*/g, '<em>$1</em>') // 斜体
-        .replace(/^# (.*$)/gm, '<h1>$1</h1>') // 一级标题
-        .replace(/^## (.*$)/gm, '<h2>$1</h2>') // 二级标题
-        .replace(/^### (.*$)/gm, '<h3>$1</h3>') // 三级标题
-        .replace(/`(.*?)`/g, '<code>$1</code>') // 行内代码
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>') // 代码块
-        .replace(/\n/g, '<br>'); // 换行
-      
-      // 继续读取
-      reader?.read().then(processStream);
-    };
-    
-    reader?.read().then(processStream);
-  });
+  (window as any).electronAPI.ai.generateStream(prompt, 'generate')
+    .catch((error: Error) => {
+      contentDiv.innerHTML = `<div class="text-red-500 p-2">生成失败: ${error.message}</div>`;
+      cleanup();
+    });
 
   // 确认按钮点击事件
   confirmButton.onclick = () => {

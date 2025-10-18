@@ -1,8 +1,8 @@
 {
   "name": "ideanote",
-  "productName": "ideanote",
+  "productName": "IdeaNote",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "IdeaNote - AI驱动的创意写作工具 by ideaswork",
   "main": ".vite/build/main.js",
   "type": "commonjs",
   "scripts": {

@@ -26,7 +26,14 @@ filePath: /Users/william/ideaswork/repo/ideanote/forge.config.ts
 /Users/william/ideaswork/repo/ideanote/index.html
 /Users/william/ideaswork/repo/ideanote/src/preload.ts
           
-# Electron Forge + React 项目目录结构解析
+# IdeaNote - AI驱动的创意写作工具
+
+## 项目简介
+
+IdeaNote 是一个基于 Electron Forge 和 Vite + TypeScript 的桌面应用项目，专为创意写作而设计的AI驱动工具。
+
+**作者**: ideaswork  
+**B站账号**: ideaswork
 
 ## 项目架构概览
 
@@ -51,7 +58,7 @@ filePath: /Users/william/ideaswork/repo/ideanote/forge.config.ts
   - 窗口尺寸和配置设置
 - **renderer.ts** - 渲染进程入口
   - 前端 React 应用的启动点
-  - 当前显示简单的 "Hello World"
+  - IdeaNote 创意写作工具界面
 - **preload.ts** - 预加载脚本（用于安全的主进程与渲染进程通信）
 - **index.css** - 样式文件
 

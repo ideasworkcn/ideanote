@@ -7,6 +7,8 @@ import { useEditor } from "novel";
 import { addAIHighlight } from "novel/extensions";
 import { useState } from "react";
 import Markdown from "react-markdown";
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import CrazySpinner from "../ui/icons/crazy-spinner";
@@ -39,8 +41,64 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
         {hasCompletion && (
           <div className="flex max-h-[400px]">
             <ScrollArea>
-              <div className="prose prose-sm  p-4 text-sm">
-                <Markdown>
+              <div className="prose prose-sm dark:prose-invert max-w-none p-4 text-sm">
+                <Markdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw]}
+                  components={{
+                    // 自定义组件样式
+                    h1: ({ children }) => <h1 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-base font-medium mb-1 text-gray-900 dark:text-gray-100">{children}</h3>,
+                    p: ({ children }) => <p className="mb-2 text-gray-800 dark:text-gray-200 leading-relaxed">{children}</p>,
+                    code: ({ children, className }) => {
+                      const isInline = !className;
+                      return isInline ? (
+                        <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400">
+                          {children}
+                        </code>
+                      ) : (
+                        <code className={className}>{children}</code>
+                      );
+                    },
+                    pre: ({ children }) => (
+                      <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto mb-3 border dark:border-gray-700">
+                        {children}
+                      </pre>
+                    ),
+                    ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
+                    li: ({ children }) => <li className="text-gray-800 dark:text-gray-200">{children}</li>,
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-700 dark:text-gray-300 mb-2">
+                        {children}
+                      </blockquote>
+                    ),
+                    strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-gray-100">{children}</strong>,
+                    em: ({ children }) => <em className="italic text-gray-800 dark:text-gray-200">{children}</em>,
+                    a: ({ href, children }) => (
+                      <a href={href} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    ),
+                    hr: () => <hr className="border-gray-300 dark:border-gray-600 my-4" />,
+                    table: ({ children }) => (
+                      <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600 mb-3">
+                        {children}
+                      </table>
+                    ),
+                    th: ({ children }) => (
+                      <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-100 dark:bg-gray-800 font-semibold text-left">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                        {children}
+                      </td>
+                    ),
+                  }}
+                >
                   {completion}
                 </Markdown>
               </div>

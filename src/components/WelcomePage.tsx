@@ -21,7 +21,8 @@ export default function WelcomePage({ onSelectWorkspace, onUseDefault, workspace
             欢迎使用 IdeaNote
           </CardTitle>
           <CardDescription className="text-gray-600 mt-2">
-            选择您的工作区文件夹来开始创作
+            选择您的工作区文件夹来开始创作<br/>
+            <span className="text-sm text-gray-500">by ideaswork (B站: ideaswork)</span>
           </CardDescription>
         </CardHeader>
         
