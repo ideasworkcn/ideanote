@@ -44,16 +44,36 @@ export function useCompletion(options: UseCompletionOptions = {}) {
         // 使用Electron IPC流式API
         const { option, command } = completeOptions?.body || {};
         
+        // 使用ref来跟踪最新的completion内容
+        let currentCompletion = '';
+        
         // 设置流式数据处理
         const handleStreamChunk = (_event: any, chunk: string) => {
-          setCompletion(prev => prev + chunk);
+          // 添加日志来查看接收到的数据
+          // console.log('📥 useCompletion接收chunk:', JSON.stringify(chunk));
+          // console.log('📥 当前累积长度:', currentCompletion.length);
+          
+          currentCompletion += chunk;
+          // console.log('📥 累积后总长度:', currentCompletion.length);
+          // console.log('📥 完整累积内容:', currentCompletion.replace(/\n/g, '\\n'));
+          // console.log('📥 Markdown符号检查:', {
+          //   hasH3: currentCompletion.includes('###'),
+          //   hasH4: currentCompletion.includes('####'),
+          //   hasBold: currentCompletion.includes('**'),
+          //   hasNewlines: currentCompletion.includes('\n'),
+          //   hasDashes: currentCompletion.includes('-')
+          // });
+          // console.log('---');
+          
+          setCompletion(currentCompletion);
         };
 
         const handleStreamComplete = () => {
           setIsLoading(false);
           if (options.onFinish) {
-            options.onFinish(completion);
+            options.onFinish(currentCompletion);
           }
+          cleanup();
         };
 
         const handleStreamError = (_event: any, errorMessage: string) => {
@@ -64,6 +84,14 @@ export function useCompletion(options: UseCompletionOptions = {}) {
           if (options.onError) {
             options.onError(error);
           }
+          cleanup();
+        };
+
+        // 清理监听器函数
+        const cleanup = () => {
+          window.electronAPI.removeListener('ai:streamChunk', handleStreamChunk);
+          window.electronAPI.removeListener('ai:streamComplete', handleStreamComplete);
+          window.electronAPI.removeListener('ai:streamError', handleStreamError);
         };
 
         // 注册临时监听器
@@ -74,14 +102,7 @@ export function useCompletion(options: UseCompletionOptions = {}) {
         // 启动流式生成
         await window.electronAPI.ai.generateStream(prompt, option || 'generate', command);
 
-        // 清理监听器
-        const cleanup = () => {
-          window.electronAPI.removeListener('ai:streamChunk', handleStreamChunk);
-          window.electronAPI.removeListener('ai:streamComplete', handleStreamComplete);
-          window.electronAPI.removeListener('ai:streamError', handleStreamError);
-        };
-
-        // 30秒后自动清理监听器
+        // 30秒后自动清理监听器（备用清理机制）
         setTimeout(cleanup, 30000);
 
       } else {

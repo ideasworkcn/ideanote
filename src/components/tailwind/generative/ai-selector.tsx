@@ -34,13 +34,15 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
 
   return (
     <>
-      <Command className="w-[350px]">
+      <Command className="w-[500px]">
         
         {hasCompletion && (
           <div className="flex max-h-[400px]">
             <ScrollArea>
-              <div className="prose p-2 px-4 prose-sm">
-                <Markdown>{completion}</Markdown>
+              <div className="prose prose-sm  p-4 text-sm">
+                <Markdown>
+                  {completion}
+                </Markdown>
               </div>
             </ScrollArea>
           </div>

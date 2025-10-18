@@ -2,7 +2,6 @@ import { app, BrowserWindow, ipcMain, Menu, dialog, safeStorage } from 'electron
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import fs from 'node:fs';
-import crypto from 'node:crypto';
 import { novelcopy } from './lib/copyContent';
 
 if (started) {
@@ -48,72 +47,6 @@ const sanitizeFileBase = (s: string): string => {
     return '新文案';
   }
 };
-
-// 规范化并修复历史 JSON 元数据文件的字段类型
-const normalizeMetaFile = (jsonPath: string, meta: any) => {
-  const m = { ...meta };
-  let changed = false;
-
-  // content 必须为字符串（JSON 字符串）
-  if (typeof m.content !== 'string') {
-    if (m.content && typeof m.content === 'object') {
-      try {
-        m.content = JSON.stringify(m.content);
-      } catch {
-        m.content = '';
-      }
-      changed = true;
-    } else {
-      m.content = String(m.content || '');
-      changed = true;
-    }
-  }
-
-  // richContent 必须为字符串（Markdown），若误存了 doc，则迁移到 content
-  if (typeof m.richContent !== 'string') {
-    if (m.richContent && typeof m.richContent === 'object') {
-      const docLike = m.richContent && m.richContent.type === 'doc';
-      if (docLike) {
-        // 若 content 为空，则将 doc 迁移到 content
-        if (!m.content || !String(m.content).trim()) {
-          try {
-            m.content = JSON.stringify(m.richContent);
-          } catch {}
-        }
-        m.richContent = '';
-        changed = true;
-      } else {
-        // 非 doc 的对象，保底转为字符串
-        try {
-          m.richContent = JSON.stringify(m.richContent);
-        } catch {
-          m.richContent = '';
-        }
-        changed = true;
-      }
-    } else {
-      m.richContent = String(m.richContent || '');
-      changed = true;
-    }
-  }
-
-  // createdAt 统一为 ISO 字符串
-  if (typeof m.createdAt !== 'string') {
-    if (m.createdAt?.toISOString) {
-      m.createdAt = m.createdAt.toISOString();
-    } else if (!m.createdAt) {
-      m.createdAt = new Date().toISOString();
-    } else {
-      m.createdAt = String(m.createdAt);
-    }
-    changed = true;
-  }
-
-  if (changed) writeJsonSafe(jsonPath, m);
-  return m;
-};
-
-
 
 
 
@@ -224,13 +157,6 @@ function notifyWorkspaceOpened() {
   }
 }
 
-function findCopyById(id: string): { metaPath: string } | null {
-  const metaPath = path.join(workspaceRoot, `${id}.json`);
-  if (fs.existsSync(metaPath)) {
-    return { metaPath };
-  }
-  return null;
-}
 
 function registerIpcHandlers() {
   // 仅确保工作区存在；所有文件系统 IPC 已在下方统一注册
@@ -595,7 +521,7 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
   }
 });
 
-// 流式AI生成处理器
+// 流式AI生成处理器 - 参考Next.js简化版本
 ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string, command?: string) => {
   try {
     // 获取API密钥
@@ -626,6 +552,7 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
     const userContent = option === 'zap' ? `对于这段文本：${prompt}。你必须遵守这些要求：${command}` : 
                        option === 'generate' ? prompt : `现有文本是：${prompt}`;
 
+    // 使用类似OpenAI SDK的方式调用API
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -644,36 +571,55 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
       throw new Error(`API error: ${response.status}`);
     }
 
-    // 类似Next.js的简洁流处理
+    // 简化的流处理 - 参考Next.js ReadableStream模式
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
 
     try {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          event.sender.send('ai:streamComplete');
+          break;
+        }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // 保留最后一行（可能不完整）
+        // 解码数据块
+        const chunk = decoder.decode(value, { stream: true });
         
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
+        // 直接处理整个chunk，不要按行分割以避免丢失换行符
+        if (chunk.includes('data: ')) {
+          // 按SSE格式分割，但保留原始内容的换行符
+          const sseEvents = chunk.split(/(?=data: )/);
           
-          const data = line.slice(6);
-          if (data === '[DONE]') {
-            event.sender.send('ai:streamComplete');
-            return { success: true };
-          }
-          
-          try {
-            const { choices } = JSON.parse(data);
-            const content = choices[0]?.delta?.content;
-            if (content) {
-              event.sender.send('ai:streamChunk', content);
-            }
-          } catch {}
+          for (const sseEvent of sseEvents) {
+             if (!sseEvent.trim() || !sseEvent.startsWith('data: ')) continue;
+             
+             const data = sseEvent.slice(6).trim();
+             if (data === '[DONE]') {
+               event.sender.send('ai:streamComplete');
+               return { success: true };
+             }
+             
+             try {
+               const parsed = JSON.parse(data);
+               const content = parsed.choices?.[0]?.delta?.content || '';
+               if (content) {
+                 // 添加日志来查看原始内容格式
+                //  console.log('🔍 原始chunk内容:', JSON.stringify(content));
+                //  console.log('🔍 chunk长度:', content.length);
+                //  console.log('🔍 包含换行符:', content.includes('\n'));
+                //  console.log('🔍 包含markdown符号:', /[#*`_\-\[\]]/g.test(content));
+                //  console.log('🔍 完整内容预览:', content.replace(/\n/g, '\\n'));
+                //  console.log('---');
+                 
+                 // 确保换行符被正确保留
+                 event.sender.send('ai:streamChunk', content);
+               }
+             } catch (parseErr) {
+               // 静默忽略解析错误
+               continue;
+             }
+           }
         }
       }
     } finally {
