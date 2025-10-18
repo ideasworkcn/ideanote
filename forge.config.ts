@@ -22,11 +22,11 @@ const config = {
   ],
   plugins: [
     new VitePlugin({
-      // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
-      // If you are familiar with Vite configuration, it will look really familiar.
+      // `build` 可以指定多个入口构建，例如主进程、预加载脚本、工作进程等。
+      // 如果你熟悉 Vite 配置，这部分看起来会非常眼熟。
       build: [
         {
-          // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
+          // `entry` 只是对应 `config` 文件中 `build.lib.entry` 的别名。
           entry: 'src/main.ts',
           config: 'vite.main.config.ts',
           target: 'main',
@@ -44,8 +44,7 @@ const config = {
         },
       ],
     }),
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
+    // Fuses 用于在打包时、代码签名之前启用/禁用 Electron 的某些功能
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,
