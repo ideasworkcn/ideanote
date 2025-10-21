@@ -1,0 +1,28 @@
+appId: com.ideaswork.ideanote
+productName: IdeaNote
+directories:
+  output: out/electron-builder
+icon: assets/icon.svg
+files:
+  - dist/**/*
+  - src/**/*
+  - index.html
+  - assets/**/*
+  - package.json
+  - main.js
+asar: true
+asarUnpack:
+  - '**/*.{node,dll}'
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+win:
+  target:
+    - target: nsis
+      arch: [x64, ia32]
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]

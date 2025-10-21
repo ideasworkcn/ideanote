@@ -4,12 +4,19 @@ module.exports = async () => {
   
   return defineConfig({
     build: {
-      rollupOptions: {
-        external: ['sqlite3'],
+      lib: {
+        entry: 'src/main.ts',
+        formats: ['cjs'],
+        fileName: () => 'main.js',
       },
+      rollupOptions: {
+        external: ['electron', 'node:path', 'node:fs'],
+      },
+      // 防止清空整个dist目录
+      emptyOutDir: false,
     },
     optimizeDeps: {
-      exclude: ['sqlite3'],
+      exclude: [],
     },
   });
 };

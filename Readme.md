@@ -188,3 +188,108 @@ ideanote/
   <p>Made with ❤️ by ideaswork</p>
 </div>
         
+
+
+
+
+          
+我来为你详细解释这个从 Electron Forge 迁移到 electron-builder 的项目中各个重要文件的作用：
+
+## 项目结构对比说明
+
+### 📁 主要配置文件
+
+**`package.json`** - 项目核心配置
+- 定义了项目依赖、脚本命令和元数据
+- 从 Electron Forge 的复杂配置简化为 electron-builder 的简洁配置
+- 关键脚本：`start` (运行应用)、`build` (构建)、`package` (打包)
+
+**`electron-builder.yml`** - electron-builder 打包配置
+- 取代了 Electron Forge 的复杂配置
+- 定义应用名称、图标、输出目录等打包参数
+- 配置 macOS、Windows、Linux 的特定构建设置
+
+### 📁 Vite 配置文件
+
+**`vite.main.config.ts`** - 主进程构建配置
+- 配置 Electron 主进程的 TypeScript 编译
+- 定义外部依赖处理（如 Node.js 内置模块）
+- 控制主进程代码的打包方式
+
+**`vite.preload.config.ts`** - 预加载脚本配置
+- 专门处理 `preload.ts` 脚本的构建
+- 确保预加载脚本的安全性和隔离性
+
+**`vite.renderer.config.ts`** - 渲染进程配置
+- 配置前端界面的构建（React + TypeScript）
+- 包含 Tailwind CSS、路径别名等前端相关配置
+- 处理 CSS 处理、代码分割等优化
+
+### 📁 源代码文件
+
+**`src/main.ts`** - Electron 主进程入口
+- 管理应用生命周期（创建窗口、菜单、IPC 通信）
+- 处理文件系统操作（读写 JSON 文件、工作区管理）
+- 集成 AI 功能（DeepSeek API 调用）
+- 工作区管理和配置文件处理
+
+**`src/preload.ts`** - 预加载脚本
+- 在渲染进程和主进程之间建立安全桥梁
+- 暴露安全的 API 给前端使用
+- 实现 IPC 通信的封装
+
+**`src/renderer.ts`** - 渲染进程入口
+- 初始化 React 应用
+- 设置前端路由和状态管理
+
+**`src/app.tsx`** - React 应用主组件
+- 应用的主要界面逻辑
+- 集成 Notion 风格的编辑器
+
+### 📁 界面组件
+
+**`src/components/`** 目录：
+- `WelcomePage.tsx` - 欢迎页面
+- `Header.tsx`、`Footer.tsx` - 应用头部和底部
+- `AboutDialog.tsx` - 关于对话框
+- `settings/` - 设置相关组件
+- `notion/` - Notion 风格编辑器组件
+- `ui/` - 基础 UI 组件库
+
+### 📁 工具文件
+
+**`src/lib/`** 目录：
+- `api-key-storage.ts` - API 密钥安全存储
+- `content.ts` - 内容处理工具
+- `copyContent.ts` - 文案内容管理
+- `utils.ts` - 通用工具函数
+
+**`src/hooks/`** 目录：
+- `use-toast.ts` - 通知提示钩子
+- `useCompletion.ts` - AI 自动完成钩子
+
+### 📁 静态资源
+
+**`index.html`** - 应用主页面
+- 应用的 HTML 入口点
+- 加载 React 应用和样式文件
+
+**`src/index.css`** - 全局样式
+- Tailwind CSS 基础样式
+- 应用级样式定义
+
+### 📁 类型定义
+
+**`src/types/Model.ts`** - TypeScript 类型定义
+- 定义应用使用的数据结构和接口
+
+## 迁移后的关键改进
+
+1. **简化配置**：electron-builder 配置比 Electron Forge 简单很多
+2. **构建速度**：Vite 提供了更快的开发体验和构建速度
+3. **现代化**：使用最新的 TypeScript、React 和 Tailwind CSS
+4. **AI 集成**：内置 DeepSeek API 集成，支持文案生成和优化
+5. **工作区管理**：支持多项目工作区切换
+
+这个项目现在是一个功能完整的现代化 Electron 应用，具有 AI 辅助文案创作、Notion 风格编辑器和多工作区管理功能。
+        

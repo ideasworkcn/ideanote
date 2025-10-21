@@ -8,11 +8,11 @@
     "noImplicitAny": true,
     "sourceMap": true,
     "baseUrl": ".",
-    "outDir": "dist",
     "resolveJsonModule": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "exclude": ["dist", "node_modules", ".vite"]
 }

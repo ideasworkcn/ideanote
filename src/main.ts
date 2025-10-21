@@ -273,15 +273,24 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
   
-  // 在开发环境下，通常由前端 dev server 提供页面
-  // 若未运行 dev server，可回退到加载本地文件
-  const devUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173';
-  try {
-    mainWindow.loadURL(devUrl);
-  } catch {
-    const indexHtml = path.join(__dirname, 'index.html');
+  // 直接加载本地 index.html 文件，跳过 dev server
+  // 优先加载 dist 目录中的构建后的 index.html
+  const distIndexHtml = path.join(__dirname, 'index.html');
+  if (fs.existsSync(distIndexHtml)) {
+    mainWindow.loadFile(distIndexHtml);
+  } else {
+    // 回退到上一级目录的 index.html（开发时）
+    const indexHtml = path.join(__dirname, '..', 'index.html');
     if (fs.existsSync(indexHtml)) {
       mainWindow.loadFile(indexHtml);
+    } else {
+      // 如果仍然找不到，尝试从当前工作目录加载
+      const rootIndexHtml = path.join(process.cwd(), 'index.html');
+      if (fs.existsSync(rootIndexHtml)) {
+        mainWindow.loadFile(rootIndexHtml);
+      } else {
+        console.error('Could not find index.html in any expected location');
+      }
     }
   }
 }

@@ -17,21 +17,9 @@ module.exports = async () => {
       '@': path.default.resolve(__dirname, 'src'),
     },
   },
+  base: './', // 使用相对路径
   build: {
     rollupOptions: {
-      external: [
-        'react',
-        'react-dom',
-        'novel',
-        'jotai',
-        'tunnel-rat',
-        'lowlight',
-        'y-websocket',
-        'y-protocols',
-        'yjs',
-        /^@radix-ui\/.*$/,
-        /^@tiptap\/.*$/,
-      ],
     },
   },
 });
