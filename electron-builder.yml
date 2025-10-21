@@ -2,7 +2,7 @@ appId: com.ideaswork.ideanote
 productName: IdeaNote
 directories:
   output: out/electron-builder
-icon: assets/icon.svg
+icon: assets/icon.png
 files:
   - dist/**/*
   - src/**/*
