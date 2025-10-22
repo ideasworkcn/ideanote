@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
     // 通用媒体文件保存功能（支持视频、音频、图片）
     saveMedia: (mediaBuffer: Uint8Array, fileName: string, mediaType: 'video' | 'audio' | 'image') => ipcRenderer.invoke('fs:saveMedia', mediaBuffer, fileName, mediaType),
+    
+    // 选择媒体文件功能（支持视频、音频）
+    selectMediaFile: (mediaType: 'video' | 'audio') => ipcRenderer.invoke('fs:selectMediaFile', mediaType),
   },
   // AI 生成功能
   ai: {
@@ -88,6 +91,9 @@ declare global {
         
         // 通用媒体文件保存功能类型声明
         saveMedia: (mediaBuffer: Uint8Array, fileName: string, mediaType: 'video' | 'audio' | 'image') => Promise<{ success: boolean; fileName?: string; relativePath?: string; fullPath?: string; error?: string }>;
+        
+        // 选择媒体文件功能类型声明
+        selectMediaFile: (mediaType: 'video' | 'audio') => Promise<{ success: boolean; filePath?: string; fileUrl?: string; fileName?: string; error?: string }>;
       };
       ai: {
         generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;

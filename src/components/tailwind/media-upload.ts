@@ -116,7 +116,7 @@ export const mediaUploadFn = async (file: File, fileType: 'video' | 'audio' | 'i
   }
 };
 
-// 创建支持多种媒体类型的拖拽处理函数
+// 创建支持多种媒体类型的拖拽处理函数（使用系统路径）
 export const handleMediaDrop = (fileType: 'video' | 'audio' | 'image') => {
   return (view: any, event: DragEvent, moved: boolean, uploadFn: any) => {
     if (!event.dataTransfer?.files?.length) {
@@ -141,25 +141,25 @@ export const handleMediaDrop = (fileType: 'video' | 'audio' | 'image') => {
 
     event.preventDefault();
 
-    // 处理文件上传
+    // 直接使用系统路径插入媒体内容
     validFiles.forEach(async (file) => {
       try {
-        const uploadResult = await mediaUploadFn(file, fileType);
-        if (uploadResult.success) {
-          // 在编辑器中插入媒体内容
-          const { schema } = view.state;
-          const nodeType = fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'image';
-          
-          const node = nodeType === 'image' 
-            ? schema.nodes.image.create({ src: uploadResult.path })
-            : schema.nodes[nodeType].create({ 
-                src: uploadResult.path,
-                title: file.name
-              });
+        // 获取系统路径
+        const filePath = (file as any).path || file.name;
+        
+        // 在编辑器中插入媒体内容
+        const { schema } = view.state;
+        const nodeType = fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'image';
+        
+        const node = nodeType === 'image' 
+          ? schema.nodes.image.create({ src: filePath })
+          : schema.nodes[nodeType].create({ 
+              src: filePath,
+              title: file.name
+            });
 
-          const transaction = view.state.tr.insert(view.state.selection.from, node);
-          view.dispatch(transaction);
-        }
+        const transaction = view.state.tr.insert(view.state.selection.from, node);
+        view.dispatch(transaction);
       } catch (error) {
         console.error(`${fileType}文件处理失败:`, error);
       }
@@ -169,7 +169,7 @@ export const handleMediaDrop = (fileType: 'video' | 'audio' | 'image') => {
   };
 };
 
-// 创建支持多种媒体类型的粘贴处理函数
+// 创建支持多种媒体类型的粘贴处理函数（使用系统路径）
 export const handleMediaPaste = (fileType: 'video' | 'audio' | 'image') => {
   return (view: any, event: ClipboardEvent, uploadFn: any) => {
     if (!event.clipboardData?.files?.length) {
@@ -194,25 +194,25 @@ export const handleMediaPaste = (fileType: 'video' | 'audio' | 'image') => {
 
     event.preventDefault();
 
-    // 处理文件上传
+    // 直接使用系统路径插入媒体内容
     validFiles.forEach(async (file) => {
       try {
-        const uploadResult = await mediaUploadFn(file, fileType);
-        if (uploadResult.success) {
-          // 在编辑器中插入媒体内容
-          const { schema } = view.state;
-          const nodeType = fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'image';
-          
-          const node = nodeType === 'image' 
-            ? schema.nodes.image.create({ src: uploadResult.path })
-            : schema.nodes[nodeType].create({ 
-                src: uploadResult.path,
-                title: file.name
-              });
+        // 获取系统路径
+        const filePath = (file as any).path || file.name;
+        
+        // 在编辑器中插入媒体内容
+        const { schema } = view.state;
+        const nodeType = fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'image';
+        
+        const node = nodeType === 'image' 
+          ? schema.nodes.image.create({ src: filePath })
+          : schema.nodes[nodeType].create({ 
+              src: filePath,
+              title: file.name
+            });
 
-          const transaction = view.state.tr.insert(view.state.selection.from, node);
-          view.dispatch(transaction);
-        }
+        const transaction = view.state.tr.insert(view.state.selection.from, node);
+        view.dispatch(transaction);
       } catch (error) {
         console.error(`${fileType}文件处理失败:`, error);
       }

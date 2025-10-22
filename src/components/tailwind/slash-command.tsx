@@ -502,86 +502,82 @@ export const suggestionItems = createSuggestionItems([
   },
 },
   {
-    title: "上传视频",
-    description: "上传本地视频文件",
-    searchTerms: ["video", "upload", "本地视频"],
+    title: "选择视频",
+    description: "选择本地视频文件",
+    searchTerms: ["video", "选择", "本地视频"],
     icon: <VideoIcon size={18} />,
     command: async ({ editor, range }) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'video/*';
-      input.onchange = async (event) => {
-        const file = (event.target as HTMLInputElement).files?.[0];
-        if (!file) return;
-
-        try {
-          const result = await mediaUploadFn(file, 'video');
-          if (result.success && result.path) {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent([{
-                type: 'video',
-                attrs: {
-                  src: result.path,
-                  title: file.name,
-                  controls: true,
-                  width: '100%',
-                  height: '400'
-                }
-              }])
-              .run();
-          } else {
-            alert('视频上传失败: ' + (result.error || '未知错误'));
-          }
-        } catch (error) {
-          console.error('视频上传错误:', error);
-          alert('视频上传失败: ' + (error as Error).message);
+      try {
+        const electronAPI = (window as any).electronAPI;
+        if (!electronAPI?.filesystem?.selectMediaFile) {
+          alert('文件选择功能不可用');
+          return;
         }
-      };
-      input.click();
+
+        const result = await electronAPI.filesystem.selectMediaFile('video');
+        
+        if (result.success && result.fileUrl) {
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent([{
+              type: 'video',
+              attrs: {
+                src: result.fileUrl,
+                title: result.fileName,
+                controls: true,
+                width: '100%',
+                height: '400'
+              }
+            }])
+            .run();
+        } else if (result.error && result.error !== '用户取消了选择') {
+          alert('视频选择失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('视频选择错误:', error);
+        alert('视频选择失败: ' + (error as Error).message);
+      }
     },
   },
   {
-    title: "上传音频",
-    description: "上传本地音频文件",
-    searchTerms: ["audio", "upload", "本地音频", "音乐"],
+    title: "选择音频",
+    description: "选择本地音频文件",
+    searchTerms: ["audio", "选择", "本地音频", "音乐"],
     icon: <ImageIcon size={18} />, // 暂时使用ImageIcon，后续可以添加音频图标
     command: async ({ editor, range }) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'audio/*';
-      input.onchange = async (event) => {
-        const file = (event.target as HTMLInputElement).files?.[0];
-        if (!file) return;
-
-        try {
-          const result = await mediaUploadFn(file, 'audio');
-          if (result.success && result.path) {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent([{
-                type: 'audio',
-                attrs: {
-                  src: result.path,
-                  title: file.name,
-                  controls: true,
-                  preload: 'metadata'
-                }
-              }])
-              .run();
-          } else {
-            alert('音频上传失败: ' + (result.error || '未知错误'));
-          }
-        } catch (error) {
-          console.error('音频上传错误:', error);
-          alert('音频上传失败: ' + (error as Error).message);
+      try {
+        const electronAPI = (window as any).electronAPI;
+        if (!electronAPI?.filesystem?.selectMediaFile) {
+          alert('文件选择功能不可用');
+          return;
         }
-      };
-      input.click();
+
+        const result = await electronAPI.filesystem.selectMediaFile('audio');
+        
+        if (result.success && result.fileUrl) {
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent([{
+              type: 'audio',
+              attrs: {
+                src: result.fileUrl,
+                title: result.fileName,
+                controls: true,
+                preload: 'metadata'
+              }
+            }])
+            .run();
+        } else if (result.error && result.error !== '用户取消了选择') {
+          alert('音频选择失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('音频选择错误:', error);
+        alert('音频选择失败: ' + (error as Error).message);
+      }
     },
   },
   {

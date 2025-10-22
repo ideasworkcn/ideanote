@@ -597,6 +597,60 @@ ipcMain.handle('fs:saveMedia', async (_event, mediaBuffer: Uint8Array, fileName:
   }
 });
 
+// 选择媒体文件：允许用户选择音频或视频文件，返回文件路径
+ipcMain.handle('fs:selectMediaFile', async (_event, mediaType: 'video' | 'audio') => {
+  try {
+    const filters = mediaType === 'video' 
+      ? [
+          { name: '视频文件', extensions: ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'] },
+          { name: '所有文件', extensions: ['*'] }
+        ]
+      : [
+          { name: '音频文件', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'webm', 'flac'] },
+          { name: '所有文件', extensions: ['*'] }
+        ];
+
+    const result = await dialog.showOpenDialog({
+      title: `选择${mediaType === 'video' ? '视频' : '音频'}文件`,
+      properties: ['openFile'],
+      filters: filters
+    });
+    
+    if (!result.canceled && result.filePaths && result.filePaths[0]) {
+      const selectedPath = result.filePaths[0];
+      
+      // 验证文件是否存在
+      if (!fs.existsSync(selectedPath)) {
+        return { 
+          success: false, 
+          error: '文件不存在' 
+        };
+      }
+      
+      // 返回file://协议的绝对路径，用于在编辑器中引用
+      const fileUrl = `file://${selectedPath}`;
+      
+      return { 
+        success: true, 
+        filePath: selectedPath,
+        fileUrl: fileUrl,
+        fileName: path.basename(selectedPath)
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: '用户取消了选择' 
+    };
+  } catch (err) {
+    console.error(`Error fs:selectMediaFile (${mediaType}):`, err);
+    return { 
+      success: false, 
+      error: String(err) 
+    };
+  }
+});
+
 // API Key 安全存储管理
 ipcMain.handle('settings:getApiKey', async () => {
   try {
