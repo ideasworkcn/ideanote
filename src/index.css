@@ -14,6 +14,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 16px; /* 平板常用基础字体大小 */
+  line-height: 1.6; /* 优化的行高 */
 }
 
 @layer base {

@@ -171,6 +171,21 @@ const markdownExtension = MarkdownExtension.configure({
   transformCopiedText: false,
 });
 
+// Configure GlobalDragHandle with proper positioning
+const globalDragHandle = GlobalDragHandle.configure({
+  dragHandleWidth: 24,
+  scrollTreshold: 100,
+  // Position the drag handle at the beginning of each line
+  dragHandleSelector: '.ProseMirror > *',
+  // Ensure proper positioning relative to each block element
+  excludeTags: ['script', 'style', 'noscript'],
+  // Fix node boundaries - ensure each paragraph and heading is treated separately
+  blockSelector: 'p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol, li, table, .iframe-wrapper, .node-image',
+  // Enable drag handle to be shown
+  showDragHandle: true,
+  // Use the default positioning but ensure it's aligned with line start
+});
+
 
 export const defaultExtensions = [
   starterKit,
@@ -194,7 +209,7 @@ export const defaultExtensions = [
   TextStyle,
   Color,
   CustomKeymap,
-  GlobalDragHandle,
+  globalDragHandle, // Use the configured drag handle
   // 使用单独的表格扩展
   Table.configure({
     resizable: true,

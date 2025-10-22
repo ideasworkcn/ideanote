@@ -126,7 +126,12 @@ const TailwindAdvancedEditor = ({
 
   // 创建综合的拖拽处理函数，支持图片、视频、音频
   const handleMultiMediaDrop = (view: any, event: DragEvent, moved: boolean, uploadFn: any) => {
+    // 检查是否是节点拖拽（非文件拖拽）
     if (!event.dataTransfer?.files?.length) {
+      // 如果是节点拖拽，允许默认行为
+      if (event.dataTransfer?.types.includes('text/html')) {
+        return false;
+      }
       return false;
     }
 
@@ -530,6 +535,25 @@ const TailwindAdvancedEditor = ({
           editorProps={{
             handleDOMEvents: {
               keydown: (_view, event) => handleCommandNavigation(event),
+              // 添加拖拽事件处理来防止文本选择
+              dragstart: (view, event) => {
+                // 防止默认的文本拖拽行为
+                if (event.dataTransfer) {
+                  event.dataTransfer.effectAllowed = 'move';
+                  event.dataTransfer.setData('text/html', '');
+                }
+                return false;
+              },
+              dragover: (view, event) => {
+                // 允许拖拽操作
+                event.preventDefault();
+                return false;
+              },
+              drop: (view, event) => {
+                // 处理拖拽放置
+                event.preventDefault();
+                return false;
+              }
             },
             handlePaste: (view, event) => handleMultiMediaPaste(view, event, uploadFn),
             handleDrop: (view, event, _slice, moved) => handleMultiMediaDrop(view, event, moved, uploadFn),

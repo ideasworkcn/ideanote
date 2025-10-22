@@ -55,66 +55,135 @@
   }
 }
 
-/* Custom TODO list checkboxes – shoutout to this awesome tutorial: https://moderncss.dev/pure-css-custom-checkbox-style/ */
-
-ul[data-type="taskList"] li > label {
-  margin-right: 0.2rem;
-  user-select: none;
+/* Task List - Unified with regular list styles */
+ul[data-type="taskList"] {
+  margin: 1rem 0;
+  padding-left: 2rem;
+  list-style: none;
 }
 
-@media screen and (max-width: 768px) {
-  ul[data-type="taskList"] li > label {
-    margin-right: 0.5rem;
-  }
+ul[data-type="taskList"] li {
+  margin: 0.5rem 0;
+  line-height: 1.7;
+  font-size: 1rem;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+/* Task list checkbox - positioned absolutely to align with regular list bullets */
+ul[data-type="taskList"] li > label {
+  position: absolute;
+  left: 0;
+  top: 0.4rem;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 ul[data-type="taskList"] li > label input[type="checkbox"] {
   -webkit-appearance: none;
   appearance: none;
-  background-color: hsl(var(--background));
+  background-color: transparent;
   margin: 0;
   cursor: pointer;
-  width: 1.2em;
-  height: 1.2em;
-  position: relative;
-  top: 0.9em;
-  border: 2px solid hsl(var(--border));
-  margin-right: 0.3rem;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 3px;
   display: grid;
   place-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-  &:hover {
-    background-color: hsl(var(--accent));
-  }
+ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+  border-color: #9CA3AF;
+  background-color: #F9FAFB;
+}
 
-  &:active {
-    background-color: hsl(var(--accent));
-  }
+ul[data-type="taskList"] li > label input[type="checkbox"]:active {
+  transform: scale(0.95);
+}
 
-  &::before {
-    content: "";
-    width: 0.65em;
-    height: 0.65em;
-    transform: scale(0);
-    transition: 120ms transform ease-in-out;
-    box-shadow: inset 1em 1em;
-    transform-origin: center;
-    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-  }
+ul[data-type="taskList"] li > label input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #3B82F6;
+  border-radius: 2px;
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
 
-  &:checked::before {
-    transform: scale(1);
-  }
+ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  border-color: #3B82F6;
+  background-color: #3B82F6;
+}
+
+ul[data-type="taskList"] li > label input[type="checkbox"]:checked::before {
+  transform: scale(1);
+  background-color: white;
+}
+
+/* Task list content styling */
+ul[data-type="taskList"] li > div {
+  display: inline;
+}
+
+ul[data-type="taskList"] li > div > p {
+  margin: 0 !important;
+  display: inline;
 }
 
 ul[data-type="taskList"] li[data-checked="true"] > div > p {
-  color: var(--muted-foreground);
+  color: #9CA3AF;
   text-decoration: line-through;
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: #D1D5DB;
 }
 
-/* Overwrite tippy-box original max-width */
 
+
+/* Novel-style code blocks - 优化为平板舒适的代码阅读体验 */
+pre {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 0.9375rem; /* 15px - 平板代码最佳大小 */
+  line-height: 1.6;
+  position: relative;
+}
+
+pre code {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  color: #1E293B;
+  font-family: inherit;
+}
+
+/* Inline code styling - 优化为平板舒适的内联代码阅读 */
+:not(pre) > code {
+  background: #F1F5F9;
+  color: #0F172A;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.9375em; /* 15px - 与代码块保持一致 */
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  border: 1px solid #E2E8F0;
+}
+
+
+
+/* Overwrite tippy-box original max-width */
 .tippy-box {
   max-width: 400px !important;
 }
@@ -126,30 +195,54 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
   box-shadow: none;
 }
 
+/* Novel.sh inspired drag handle styles - Modern, minimalist design */
+
 .drag-handle {
   position: absolute;
-  opacity: 1;
-  transition: opacity ease-in 0.2s;
-  border-radius: 0.25rem;
-
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' style='fill: rgba(0, 0, 0, 0.5)'%3E%3Cpath d='M3,2 C2.44771525,2 2,1.55228475 2,1 C2,0.44771525 2.44771525,0 3,0 C3.55228475,0 4,0.44771525 4,1 C4,1.55228475 3.55228475,2 3,2 Z M3,6 C2.44771525,6 2,5.55228475 2,5 C2,4.44771525 2.44771525,4 3,4 C3.55228475,4 4,4.44771525 4,5 C4,5.55228475 3.55228475,6 3,6 Z M3,10 C2.44771525,10 2,9.55228475 2,9 C2,8.44771525 2.44771525,8 3,8 C3.55228475,8 4,8.44771525 4,9 C4,9.55228475 3.55228475,10 3,10 Z M7,2 C6.44771525,2 6,1.55228475 6,1 C6,0.44771525 6.44771525,0 7,0 C7.55228475,0 8,0.44771525 8,1 C8,1.55228475 7.55228475,2 7,2 Z M7,6 C6.44771525,6 6,5.55228475 6,5 C6,4.44771525 6.44771525,4 7,4 C7.55228475,4 8,4.44771525 8,5 C8,5.55228475 7.55228475,6 7,6 Z M7,10 C6.44771525,10 6,9.55228475 6,9 C6,8.44771525 6.44771525,8 7,8 C7.55228475,8 8,8.44771525 8,9 C8,9.55228475 7.55228475,10 7,10 Z'%3E%3C/path%3E%3C/svg%3E");
-  background-size: calc(0.5em + 0.375rem) calc(0.5em + 0.375rem);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 6px;
+  
+  /* Modern grip icon - cleaner design */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='4' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='12' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%236B7280'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
   background-repeat: no-repeat;
   background-position: center;
-  width: 1.2rem;
-  height: 1.5rem;
+  width: 24px;
+  height: 24px;
   z-index: 50;
   cursor: grab;
-
+  
+  /* Position with better spacing - further from content */
+  left: -36px !important;
+  top: 50% !important;
+  transform: translateY(-50%);
+  
+  /* Modern subtle background - only visible on hover */
+  background-color: transparent;
+  border: 1px solid transparent;
+  
+  /* Smooth shadow for depth */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  
+  /* Scale animation for modern feel */
+  transform: translateY(-50%) scale(0.95);
+  
   &:hover {
-    background-color: var(--novel-stone-100);
-    transition: background-color 0.2s;
+    opacity: 1 !important;
+    background-color: #F3F4F6;
+    border-color: #E5E7EB;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
   }
 
   &:active {
-    background-color: var(--novel-stone-200);
-    transition: background-color 0.2s;
+    background-color: #E5E7EB;
+    border-color: #D1D5DB;
+    transform: translateY(-50%) scale(0.98);
     cursor: grabbing;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 
   &.hide {
@@ -157,15 +250,49 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
     pointer-events: none;
   }
 
-  @media screen and (max-width: 600px) {
+  @media screen and (max-width: 768px) {
     display: none;
     pointer-events: none;
   }
 }
 
-.dark .drag-handle {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' style='fill: rgba(255, 255, 255, 0.5)'%3E%3Cpath d='M3,2 C2.44771525,2 2,1.55228475 2,1 C2,0.44771525 2.44771525,0 3,0 C3.55228475,0 4,0.44771525 4,1 C4,1.55228475 3.55228475,2 3,2 Z M3,6 C2.44771525,6 2,5.55228475 2,5 C2,4.44771525 2.44771525,4 3,4 C3.55228475,4 4,4.44771525 4,5 C4,5.55228475 3.55228475,6 3,6 Z M3,10 C2.44771525,10 2,9.55228475 2,9 C2,8.44771525 2.44771525,8 3,8 C3.55228475,8 4,8.44771525 4,9 C4,9.55228475 3.55228475,10 3,10 Z M7,2 C6.44771525,2 6,1.55228475 6,1 C6,0.44771525 6.44771525,0 7,0 C7.55228475,0 8,0.44771525 8,1 C8,1.55228475 7.55228475,2 7,2 Z M7,6 C6.44771525,6 6,5.55228475 6,5 C6,4.44771525 6.44771525,4 7,4 C7.55228475,4 8,4.44771525 8,5 C8,5.55228475 7.55228475,6 7,6 Z M7,10 C6.44771525,10 6,9.55228475 6,9 C6,8.44771525 6.44771525,8 7,8 C7.55228475,8 8,8.44771525 8,9 C8,9.55228475 7.55228475,10 7,10 Z'%3E%3C/path%3E%3C/svg%3E");
+/* Novel-style hover logic - subtle and elegant */
+.ProseMirror > *:hover .drag-handle,
+.ProseMirror > *:has(.drag-handle:hover) .drag-handle {
+  opacity: 0.4;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(-50%) scale(1);
 }
+
+/* Show drag handle when hovering over any ProseMirror content */
+.ProseMirror:hover .drag-handle:not(.hide) {
+  opacity: 0.7;
+}
+
+/* Create a hover area that extends beyond the drag handle */
+.ProseMirror > * {
+  position: relative;
+}
+
+/* Keep drag handle visible when hovering over extended area */
+.ProseMirror > *:hover .drag-handle {
+  opacity: 0.8;
+}
+
+/* Ensure drag handle stays visible when mouse moves to it */
+.ProseMirror > * .drag-handle {
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Make drag handle fully visible on hover */
+.ProseMirror > * .drag-handle:hover {
+  opacity: 1;
+}
+
+
 
 /* 表格样式 */
 .ProseMirror table {
@@ -267,20 +394,7 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
   cursor: not-allowed;
 }
 
-/* 暗色主题适配 */
-.dark .ProseMirror table {
-  border-color: hsl(var(--border));
-}
 
-.dark .ProseMirror td,
-.dark .ProseMirror th {
-  border-color: hsl(var(--border));
-  background-color: hsl(var(--background));
-}
-
-.dark .ProseMirror th {
-  background-color: hsl(var(--muted));
-}
 
 
 
@@ -395,9 +509,48 @@ body {
   z-index: 1000;
 }
 
-/* ProseMirror Heading 样式 */
+/* ProseMirror base container */
+.ProseMirror {
+  /* Ensure proper positioning context for drag handles */
+  position: relative;
+  padding-left: 2.5rem !important;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  outline: none;
+}
+
+/* Ensure all ProseMirror nodes have relative positioning for drag handles */
+.ProseMirror > * {
+  position: relative;
+  min-height: 1.5em;
+}
+
+/* Force drag handles to be visible when hovering over any node */
+.ProseMirror > *:hover::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.2rem;
+  height: 1.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' style='fill: rgba(0, 0, 0, 0.3)'%3E%3Cpath d='M3,2 C2.44771525,2 2,1.55228475 2,1 C2,0.44771525 2.44771525,0 3,0 C3.55228475,0 4,0.44771525 4,1 C4,1.55228475 3.55228475,2 3,2 Z M3,6 C2.44771525,6 2,5.55228475 2,5 C2,4.44771525 2.44771525,4 3,4 C3.55228475,4 4,4.44771525 4,5 C4,5.55228475 3.55228475,6 3,6 Z M3,10 C2.44771525,10 2,9.55228475 2,9 C2,8.44771525 2.44771525,8 3,8 C3.55228475,8 4,8.44771525 4,9 C4,9.55228475 3.55228475,10 3,10 Z M7,2 C6.44771525,2 6,1.55228475 6,1 C6,0.44771525 6.44771525,0 7,0 C7.55228475,0 8,0.44771525 8,1 C8,1.55228475 7.55228475,2 7,2 Z M7,6 C6.44771525,6 6,5.55228475 6,5 C6,4.44771525 6.44771525,4 7,4 C7.55228475,4 8,4.44771525 8,5 C8,5.55228475 7.55228475,6 7,6 Z M7,10 C6.44771525,10 6,9.55228475 6,9 C6,8.44771525 6.44771525,8 7,8 C7.55228475,8 8,8.44771525 8,9 C8,9.55228475 7.55228475,10 7,10 Z'%3E%3C/path%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.6;
+  transition: opacity 0.2s ease-in-out;
+  cursor: grab;
+  z-index: 10;
+}
+
+.ProseMirror > *:hover::before:hover {
+  opacity: 1;
+}
+
+/* ProseMirror Heading 样式 - 优化为平板常用字体大小 */
 .ProseMirror h1 {
-  font-size: 2rem;
+  font-size: 2.25rem; /* 36px - 平板常用大标题 */
   font-weight: 700;
   line-height: 1.2;
   margin: 1.5rem 0 1rem 0;
@@ -405,7 +558,7 @@ body {
 }
 
 .ProseMirror h2 {
-  font-size: 1.5rem;
+  font-size: 1.875rem; /* 30px */
   font-weight: 600;
   line-height: 1.3;
   margin: 1.25rem 0 0.75rem 0;
@@ -413,7 +566,7 @@ body {
 }
 
 .ProseMirror h3 {
-  font-size: 1.25rem;
+  font-size: 1.5rem; /* 24px */
   font-weight: 600;
   line-height: 1.4;
   margin: 1rem 0 0.5rem 0;
@@ -421,7 +574,7 @@ body {
 }
 
 .ProseMirror h4 {
-  font-size: 1.125rem;
+  font-size: 1.25rem; /* 20px */
   font-weight: 600;
   line-height: 1.4;
   margin: 0.75rem 0 0.5rem 0;
@@ -429,7 +582,7 @@ body {
 }
 
 .ProseMirror h5 {
-  font-size: 1rem;
+  font-size: 1.125rem; /* 18px */
   font-weight: 600;
   line-height: 1.5;
   margin: 0.5rem 0 0.25rem 0;
@@ -437,25 +590,26 @@ body {
 }
 
 .ProseMirror h6 {
-  font-size: 0.875rem;
+  font-size: 1rem; /* 16px */
   font-weight: 600;
   line-height: 1.5;
   margin: 0.5rem 0 0.25rem 0;
   color: hsl(var(--muted-foreground));
 }
 
-/* 段落样式 */
+/* 段落样式 - 优化为平板舒适的阅读体验 */
 .ProseMirror p {
-  margin: 0.75rem 0;
-  line-height: 1.6;
+  margin: 1rem 0;
+  line-height: 1.7;
   color: hsl(var(--foreground));
+  font-size: 1rem; /* 16px - 平板最佳阅读大小 */
 }
 
-/* 列表样式 */
+/* 列表样式 - 优化为平板舒适的阅读体验 */
 .ProseMirror ul,
 .ProseMirror ol {
-  margin: 0.75rem 0;
-  padding-left: 1.5rem;
+  margin: 1rem 0;
+  padding-left: 2rem; /* 增大缩进，提升可读性 */
 }
 
 .ProseMirror ul {
@@ -467,8 +621,9 @@ body {
 }
 
 .ProseMirror li {
-  margin: 0.25rem 0;
-  line-height: 1.5;
+  margin: 0.5rem 0;
+  line-height: 1.7;
+  font-size: 1rem; /* 16px - 与段落保持一致 */
 }
 
 .ProseMirror li > p {
@@ -489,18 +644,18 @@ body {
   margin: 0;
 }
 
-/* 代码块样式 */
+/* 代码块样式 - 优化为平板舒适的代码阅读体验 */
 .ProseMirror code {
   background-color: hsl(var(--muted) / 0.2);
   color: hsl(var(--foreground));
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-family: 'JetBrainsMono', monospace;
-  font-size: 0.875rem;
+  font-size: 0.9375rem; /* 15px - 平板代码最佳大小 */
 }
 
 .ProseMirror pre {
-  background: hsl(var(--muted) / 0.1);
+  background: #1f2937;
   border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
   color: hsl(var(--foreground));
