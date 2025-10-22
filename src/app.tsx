@@ -57,11 +57,24 @@ const App: React.FC = () => {
   // 文案内容读取：统一按文件名读取 JSON 并映射为 Copy（带竞态保护）
   const loadCopyById = useCallback(async (id: string) => {
     try {
+      console.log(`[开始读取文件] ID: ${id}`);
       const raw = await window.electronAPI.filesystem.readJsonFile(id);
+      console.log(`[文件读取完成] ID: ${id}, 原始内容长度: ${raw?.length || 0}`);
+      
       let meta: any = {};
-      try { meta = JSON.parse(raw || '{}'); } catch { meta = {}; }
+      try { 
+        meta = JSON.parse(raw || '{}'); 
+        console.log(`[JSON解析成功] ID: ${id}, meta内容:`, meta);
+      } catch (e) { 
+        console.warn(`[JSON解析失败] ID: ${id}, 错误:`, e);
+        meta = {}; 
+      }
+      
       const hasValidContentString = typeof meta.content === 'string' && meta.content.trim().length > 0;
       const contentStr = hasValidContentString ? meta.content : JSON.stringify(novelcopy('', ''));
+      
+      console.log(`[构建Copy对象] ID: ${id}, 使用内容长度: ${contentStr.length}`);
+      
       const copy: Copy = {
         id,
         content: contentStr,
@@ -71,12 +84,16 @@ const App: React.FC = () => {
         pptContent: typeof meta.pptContent === 'string' ? meta.pptContent : '',
         pxh: 0,
       };
+      
       // 仅当当前加载请求仍是最新选中项时才更新，避免旧请求覆盖新选择
       if (latestLoadIdRef.current === id) {
+        console.log(`[设置当前文案] ID: ${id}`);
         setCurrentCopy(copy);
+      } else {
+        console.log(`[忽略过期请求] 当前ID: ${latestLoadIdRef.current}, 请求ID: ${id}`);
       }
     } catch (e) {
-      console.error('读取文件失败:', e);
+      console.error(`[读取文件失败] ID: ${id}:`, e);
       const fallback: Copy = {
         id,
         content: JSON.stringify(novelcopy('', '')),
@@ -105,11 +122,17 @@ const App: React.FC = () => {
       setCurrentCopy(null);
       return;
     }
+    
+    console.log(`[文案切换开始] 选中ID: ${selectedCopyId}`);
+    
     // 选中项变化时立即清空当前内容，避免旧文案在新 id 下保存
     setCurrentCopy(null);
     latestLoadIdRef.current = selectedCopyId;
+    
+    // 异步加载新文案
     (async () => {
       await loadCopyById(selectedCopyId);
+      console.log(`[文案切换完成] ID: ${selectedCopyId}`);
     })();
   }, [selectedCopyId, loadCopyById]);
 

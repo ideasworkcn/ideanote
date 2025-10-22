@@ -14,7 +14,7 @@ import {
 } from "novel";
 import { ImageResizer, handleCommandNavigation } from "novel/extensions";
 import { MermaidExtension } from '@/components/tailwind/MermaidExtension'
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback, memo } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { defaultExtensions } from "./extensions";
 import { ColorSelector } from "./selectors/color-selector";
@@ -134,140 +134,90 @@ const TailwindAdvancedEditor = ({
     return new XMLSerializer().serializeToString(doc);
   };
 
-  const debouncedUpdates = useDebouncedCallback(async (editor: EditorInstance) => {
-    const json = editor.getJSON();
-    const textContent = editor.getText(); // 获取纯文本内容
-    const chineseCharCount = (textContent.match(/[\u4e00-\u9fa5]/g) || []).length; // 统计中文字符
-    const wordCount = textContent.split(/\s+/).filter(Boolean).length; // 统计英文单词
-    const totalCount = chineseCharCount + wordCount; // 综合统计
-    
-    setCharsCount(totalCount);
-    
-    // 使用单一缓存键存储所有编辑器数据
-    const id = copy?.id || 'no-copy';
-    const editorCache = {
-      json: json,
-      html: highlightCodeblocks(editor.getHTML()),
-      markdown: editor.storage.markdown.getMarkdown(),
-      timestamp: Date.now()
-    };
-    
-    localStorage.setItem(`editor-cache-${id}`, JSON.stringify(editorCache));
-    setSaveStatus("unSaved");
-  }, 500);
-
-  useEffect(() => {
-    // 每次切换文案都重置编辑器，设置当前文案的初始缓存，避免内容不更新
-    if (editorInstance) {
-      editorInstance.destroy();
-      setEditorInstance(null);
-    }
+  // 优化：使用异步批处理和内存缓存 - 添加防抖
+  const cacheRef = useRef<Map<string, any>>(new Map());
   
-    const id = copy?.id || 'no-copy';
-    const raw = typeof copy?.content === 'string' ? copy.content.trim() : '';
-    let parsed: JSONContent | null = null;
-    
-    // 详细的JSON解析过程，包含错误日志
-    if (raw) {
-      console.log(`[JSON解析] 文件ID: ${id}, 原始内容长度: ${raw.length}`);
-      console.log(`[JSON解析] 原始内容预览: ${raw.substring(0, 200)}${raw.length > 200 ? '...' : ''}`);
+  // 优化的防抖更新函数
+  const debouncedUpdates = useDebouncedCallback(
+    async (editor: EditorInstance) => {
+      const json = editor.getJSON();
+      const textContent = editor.getText(); // 获取纯文本内容
+      const chineseCharCount = (textContent.match(/[\u4e00-\u9fa5]/g) || []).length; // 统计中文字符
+      const wordCount = textContent.split(/\s+/).filter(Boolean).length; // 统计英文单词
+      const totalCount = chineseCharCount + wordCount; // 综合统计
       
-      if (raw.startsWith('{') || raw.startsWith('[')) {
-        try {
-          console.log(`[JSON解析] 开始解析JSON内容...`);
-          parsed = JSON.parse(raw);
-          console.log(`[JSON解析] ✅ JSON解析成功`, parsed);
-          
-          // Validate and clean the parsed content to prevent empty text nodes
-          if (parsed && typeof parsed === 'object') {
-            const originalParsed = JSON.stringify(parsed);
-            parsed = cleanContentStructure(parsed);
-            console.log(`[JSON解析] ✅ 内容结构清理完成`, parsed);
-            
-            if (JSON.stringify(parsed) !== originalParsed) {
-              console.log(`[JSON解析] ℹ️ 内容结构已优化，移除了空文本节点`);
-            }
-          }
-        } catch (error) {
-          console.error(`[JSON解析] ❌ JSON解析失败 - 文件ID: ${id}`);
-          console.error(`[JSON解析] 错误详情:`, error);
-          console.error(`[JSON解析] 问题内容:`, raw);
-          
-          // 尝试分析具体的解析问题
-          if (error instanceof SyntaxError) {
-            console.error(`[JSON解析] 语法错误: ${error.message}`);
-            
-            // 检查常见的JSON格式问题
-            if (raw.includes('undefined')) {
-              console.error(`[JSON解析] 发现undefined值，这不是有效的JSON`);
-            }
-            if (raw.includes("'")) {
-              console.error(`[JSON解析] 发现单引号，JSON应使用双引号`);
-            }
-            if (!raw.endsWith('}') && !raw.endsWith(']')) {
-              console.error(`[JSON解析] JSON内容可能不完整，缺少结束符号`);
-            }
-          }
-          
-          parsed = null;
-        }
-      } else {
-        console.warn(`[JSON解析] ⚠️ 内容不是JSON格式 - 文件ID: ${id}`);
-        console.warn(`[JSON解析] 内容开头: "${raw.substring(0, 50)}"`);
-        parsed = null;
-      }
-    } else {
-      console.log(`[JSON解析] ℹ️ 内容为空 - 文件ID: ${id}`);
-    }
-    
-    // 如果解析失败，使用空的默认内容而不是文件名作为标题
-    const nextInitial = parsed ?? novelcopy('', '');
-    
-    if (!parsed) {
-      console.log(`[JSON解析] 🔄 使用默认内容结构替代`);
-    } else {
-      console.log(`[JSON解析] 🎯 准备设置解析后的内容:`, nextInitial);
-    }
-    
-    // 强制清空初始内容，确保重新渲染
-    console.log(`[状态更新] 清空initialContent，准备重新设置`);
-    setInitialContent(null);
-    
-    // 使用 setTimeout 确保状态更新后再设置新内容
-    setTimeout(() => {
-      console.log(`[状态更新] 设置新的initialContent:`, nextInitial);
-      setInitialContent(nextInitial);
-    }, 10); // 增加延迟时间，确保状态更新
-
-    // 清理所有可能存在的旧缓存，避免内容混乱
-    try {
-      // 清理所有可能的旧缓存键（包括旧的多键缓存和新的单键缓存）
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (
-          key.startsWith('html-content-') || 
-          key.startsWith('novel-content-') || 
-          key.startsWith('markdown-') ||
-          key.startsWith('editor-cache-')
-        )) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
+      // 只在变化时更新状态
+      setCharsCount(prev => (prev !== totalCount ? totalCount : prev));
       
-      // 预写入当前文案的单一缓存，保证在 onUpdate 触发前保存也能拿到正确内容
-      const initialCache = {
-        json: nextInitial,
-        html: '',
-        markdown: copy?.richContent || '',
+      // 使用单一缓存键存储所有编辑器数据
+      const id = copy?.id || 'no-copy';
+      const editorCache = {
+        json: json,
+        html: highlightCodeblocks(editor.getHTML()),
+        markdown: editor.storage.markdown.getMarkdown(),
         timestamp: Date.now()
       };
-      localStorage.setItem(`editor-cache-${id}`, JSON.stringify(initialCache));
-    } catch (e) {
-      console.warn('初始化缓存失败:', e);
+      
+      // 先更新内存缓存
+      cacheRef.current.set(id, editorCache);
+      
+      // 异步写入localStorage，避免阻塞UI
+      setTimeout(() => {
+        try {
+          localStorage.setItem(`editor-cache-${id}`, JSON.stringify(editorCache));
+        } catch (e) {
+          console.warn('localStorage写入失败:', e);
+        }
+      }, 0);
+      
+      setSaveStatus("unSaved");
+    },
+    500 // 500ms防抖延迟
+  );
+
+  // 修复：文案切换处理 - 强制重新加载新文案数据，不使用缓存
+  const handleCopyChange = useCallback(async (newCopy: Copy | undefined) => {
+    if (!newCopy) {
+      setInitialContent(novelcopy('', ''));
+      return;
     }
-  }, [copy]); 
+    
+    const id = newCopy.id || 'no-copy';
+    const raw = typeof newCopy.content === 'string' ? newCopy.content.trim() : '';
+    
+    console.log(`[文案切换] 文件ID: ${id}, 内容长度: ${raw.length}`);
+    
+    // 立即解析JSON内容，不使用缓存
+    let parsed: JSONContent | null = null;
+    
+    if (raw && (raw.startsWith('{') || raw.startsWith('['))) {
+      try {
+        parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          parsed = cleanContentStructure(parsed);
+        }
+        console.log(`[JSON解析成功] 文件ID: ${id}`);
+      } catch (error) {
+        console.warn(`JSON解析失败 - 文件ID: ${id}`, error);
+        parsed = null;
+      }
+    }
+    
+    const nextInitial = parsed ?? novelcopy('', '');
+    console.log(`[设置编辑器内容] 文件ID: ${id}, 内容类型: ${parsed ? 'JSON' : '默认模板'}`);
+    setInitialContent(nextInitial);
+    
+    // 清除该文案的缓存，确保下次切换时重新加载
+    const cacheKey = `editor-cache-${id}`;
+    localStorage.removeItem(cacheKey);
+    cacheRef.current.delete(id);
+    
+  }, []); // 依赖数组保持为空，避免重复创建函数
+
+  useEffect(() => {
+    console.log(`[useEffect触发] copy变化:`, copy?.id);
+    handleCopyChange(copy);
+  }, [copy]); // 移除handleCopyChange依赖，避免循环触发 
 
   const saveNovelCopy = async (editor?: EditorInstance) => {
     try {

@@ -1,77 +1,95 @@
 // hooks/useCompletion.ts
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 
 interface UseCompletionOptions {
   api?: string;
   id?: string;
-  onResponse?: (response: Response) => void;
+  onResponse?: (response: string) => void;
   onError?: (error: Error) => void;
   onFinish?: (completion: string) => void;
-  onStart?: () => void;
+  onStart?: (prompt: string) => void;
+  onSuccess?: (completion: string) => void;
 }
 
-interface CompleteOptions {
+interface CompletionOptions {
   body?: any;
 }
 
-export function useCompletion(options: UseCompletionOptions = {}) {
-  const [completion, setCompletion] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+export function useCompletion({
+  api = '/api/completion',
+  onError,
+  onFinish,
+  onResponse,
+  onStart,
+  onSuccess,
+}: UseCompletionOptions = {}) {
+  const [completion, setCompletion] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // 添加防抖机制
+  const lastRequestTime = useRef<number>(0);
+  const requestQueue = useRef<string[]>([]);
+  const processingQueue = useRef<boolean>(false);
 
-  const complete = useCallback(async (prompt: string, completeOptions?: CompleteOptions) => {
-    // 如果有正在进行的请求，先取消它
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+  // 优化的完成函数 - 添加防抖和队列管理
+  const complete = useCallback(async (prompt: string, options?: CompletionOptions) => {
+    // 防抖：如果请求太频繁，加入队列
+    const now = Date.now();
+    if (now - lastRequestTime.current < 300) {
+      requestQueue.current.push(prompt);
+      console.log('请求太频繁，加入队列:', prompt.substring(0, 50));
+      return;
     }
-
-    // 创建新的AbortController
-    abortControllerRef.current = new AbortController();
-
-    setIsLoading(true);
-    setError(null);
-    setCompletion(''); // 清空之前的内容
-
-    // 调用开始回调
-    if (options.onStart) {
-      options.onStart();
-    }
+    
+    lastRequestTime.current = now;
 
     try {
-      // 检查是否在Electron环境中
-      if (window.electronAPI) {
-        // 使用Electron IPC流式API
-        const { option, command } = completeOptions?.body || {};
+      // 取消之前的请求
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setIsLoading(true);
+      setError(null);
+      setCompletion('');
+
+      if (onStart) {
+        onStart(prompt);
+      }
+
+      // 检查是否在 Electron 环境中
+      const isElectron = window.electronAPI !== undefined;
+
+      if (isElectron && window.electronAPI?.ai?.generateStream) {
+        // 使用 Electron IPC API
+        console.log('使用 Electron IPC API 进行流式处理');
         
-        // 使用ref来跟踪最新的completion内容
-        let currentCompletion = '';
+        let fullResponse = '';
         
         // 设置流式数据处理
         const handleStreamChunk = (_event: any, chunk: string) => {
-          // 添加日志来查看接收到的数据
-          // console.log('📥 useCompletion接收chunk:', JSON.stringify(chunk));
-          // console.log('📥 当前累积长度:', currentCompletion.length);
+          fullResponse += chunk;
+          setCompletion(fullResponse);
           
-          currentCompletion += chunk;
-          // console.log('📥 累积后总长度:', currentCompletion.length);
-          // console.log('📥 完整累积内容:', currentCompletion.replace(/\n/g, '\\n'));
-          // console.log('📥 Markdown符号检查:', {
-          //   hasH3: currentCompletion.includes('###'),
-          //   hasH4: currentCompletion.includes('####'),
-          //   hasBold: currentCompletion.includes('**'),
-          //   hasNewlines: currentCompletion.includes('\n'),
-          //   hasDashes: currentCompletion.includes('-')
-          // });
-          // console.log('---');
-          
-          setCompletion(currentCompletion);
+          if (onResponse) {
+            onResponse(fullResponse);
+          }
         };
 
         const handleStreamComplete = () => {
-          setIsLoading(false);
-          if (options.onFinish) {
-            options.onFinish(currentCompletion);
+          setCompletion(fullResponse);
+          
+          if (onSuccess) {
+            onSuccess(fullResponse);
+          }
+          
+          if (onFinish) {
+            onFinish(fullResponse);
           }
           cleanup();
         };
@@ -81,8 +99,8 @@ export function useCompletion(options: UseCompletionOptions = {}) {
           setError(error);
           setIsLoading(false);
           
-          if (options.onError) {
-            options.onError(error);
+          if (onError) {
+            onError(error);
           }
           cleanup();
         };
@@ -99,45 +117,124 @@ export function useCompletion(options: UseCompletionOptions = {}) {
         window.electronAPI.on('ai:streamComplete', handleStreamComplete);
         window.electronAPI.on('ai:streamError', handleStreamError);
 
-        // 启动流式生成
-        await window.electronAPI.ai.generateStream(prompt, option || 'generate', command);
-
-        // 30秒后自动清理监听器（备用清理机制）
-        setTimeout(cleanup, 30000);
+        try {
+          // 启动流式生成
+          const { option, command } = options?.body || {};
+          await window.electronAPI.ai.generateStream(prompt, option || 'generate', command);
+          
+          // 30秒后自动清理监听器（备用清理机制）
+          setTimeout(cleanup, 30000);
+        } catch (err) {
+          cleanup();
+          throw err;
+        }
 
       } else {
-        setIsLoading(false);
+        // 使用 HTTP 请求
+        console.log('使用 HTTP API 进行流式处理');
+        
+        const response = await fetch(api, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt,
+            ...options,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        if (onResponse) {
+          onResponse('');
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            fullResponse += chunk;
+            setCompletion(fullResponse);
+            
+            if (onResponse) {
+              onResponse(fullResponse);
+            }
+          }
+        }
+
+        setCompletion(fullResponse);
+        
+        if (onSuccess) {
+          onSuccess(fullResponse);
+        }
+        
+        if (onFinish) {
+          onFinish(fullResponse);
+        }
       }
 
     } catch (err) {
-      // 检查是否是用户取消的请求
       if (err instanceof Error && err.name === 'AbortError') {
-        return; // 静默处理取消的请求
+        console.log('请求被取消');
+        return;
       }
 
-      const error = err instanceof Error ? err : new Error('An unknown error occurred');
-      setError(error);
-      setIsLoading(false);
+      console.error('完成请求失败:', err);
+      setError(err as Error);
       
-      if (options.onError) {
-        options.onError(error);
+      if (onError) {
+        onError(err as Error);
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+      
+      // 处理队列中的下一个请求
+      if (requestQueue.current.length > 0) {
+        const nextPrompt = requestQueue.current.shift();
+        if (nextPrompt) {
+          setTimeout(() => {
+            complete(nextPrompt, options);
+          }, 100);
+        }
       }
     }
-  }, [options]);
+  }, [api, onStart, onResponse, onSuccess, onError, onFinish]);
 
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    setIsLoading(false);
   }, []);
 
-  return {
+  const reset = useCallback(() => {
+    setCompletion('');
+    setError(null);
+    setIsLoading(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    requestQueue.current = [];
+  }, []);
+
+  return useMemo(() => ({
+    complete,
     completion,
     isLoading,
     error,
-    complete,
     stop,
-  };
+    reset,
+  }), [complete, completion, isLoading, error, stop, reset]);
 }
