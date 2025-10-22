@@ -128,30 +128,10 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
             </CardContent>
           </Card>
 
-          {/* 技术栈 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">技术栈</CardTitle>
-              <CardDescription>
-                基于现代Web技术构建
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Electron</Badge>
-                <Badge variant="secondary">React</Badge>
-                <Badge variant="secondary">TypeScript</Badge>
-                <Badge variant="secondary">Tailwind CSS</Badge>
-                <Badge variant="secondary">Vite</Badge>
-                <Badge variant="secondary">Novel Editor</Badge>
-                <Badge variant="secondary">OpenAI API</Badge>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* 致谢 */}
           <div className="text-center text-sm text-muted-foreground">
-            <p>感谢所有开源项目的贡献者</p>
+            {/* <p>感谢所有开源项目的贡献者</p> */}
             <p className="mt-1">Made with ❤️ by ideaswork</p>
           </div>
         </div>

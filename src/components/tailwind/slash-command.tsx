@@ -15,6 +15,7 @@ import {
   ChartArea,
   VideoIcon,
   Youtube,
+  Twitter,
   TableIcon
 } from "lucide-react";
 import mermaid from 'mermaid'
@@ -25,6 +26,85 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { createRoot } from 'react-dom/client';
+// 新增输入对话框函数
+const createInputModal = (title: string, placeholder: string = ''): Promise<string | null> => {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-200 bg-opacity-20';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'bg-white rounded-lg shadow-lg w-full max-w-md p-6';
+    modal.appendChild(modalContent);
+
+    // 标题
+    const titleElement = document.createElement('h3');
+    titleElement.className = 'text-lg font-semibold mb-4 text-gray-900';
+    titleElement.textContent = title;
+    modalContent.appendChild(titleElement);
+
+    // 输入框
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4';
+    input.placeholder = placeholder;
+    modalContent.appendChild(input);
+
+    // 按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'flex justify-end gap-2';
+    
+    const confirmButton = document.createElement('button');
+    confirmButton.className = 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700';
+    confirmButton.textContent = '确认';
+
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200';
+    cancelButton.textContent = '取消';
+
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(confirmButton);
+    modalContent.appendChild(buttonContainer);
+
+    // 添加到body
+    document.body.appendChild(modal);
+    
+    // 聚焦到输入框
+    input.focus();
+
+    // 确认按钮点击事件
+    confirmButton.onclick = () => {
+      const value = input.value.trim();
+      document.body.removeChild(modal);
+      resolve(value || null);
+    };
+
+    // 取消按钮点击事件
+    cancelButton.onclick = () => {
+      document.body.removeChild(modal);
+      resolve(null);
+    };
+
+    // 回车键确认
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        confirmButton.click();
+      } else if (e.key === 'Escape') {
+        cancelButton.click();
+      }
+    });
+
+    // ESC 键关闭弹窗
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        document.body.removeChild(modal);
+        resolve(null);
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+  });
+};
+
 // 新增公共方法
 const createAIModal = (editor: any, prompt: string,range:Range) => {
   editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
@@ -180,125 +260,7 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
 };
 
 export const suggestionItems = createSuggestionItems([
-  {
-    title: "短视频文案生成",
-    description: "根据已有内容生成短视频文案",
-    icon: <Sparkles size={18} />,
-    command: ({ editor, range }) => {
-      const text = editor.getText();
-      const prompt = `你是一位擅长撰写爆款短视频脚本的写作助力，能够根据已有文本创作吸引目标用户留存的论文。
 
-      给出3个爆款标题：
-      - 使用悬念、反差性提问、数字和数据吸引注意力。
-      - 使用情感词汇、个人经历、触发危机意识或希望引发共鸣。
-      - 运用幽默、比喻、提问式标题创造新颖感。
-
-      给出1个视频简介：概括视频内容
-
-      根据文案类型随机选取一个结构：
-      1.PREP结构（知识分享、经验传递、观点表达）： P（观点）：亮出核心观点。R（理由）：解释观点的依据。E（案例）：用案例证明观点。P（观点回归）：重申结论。
-      2.对比结构（产品评测、生活技巧、错误纠正）：错误操作 + 负面结果 + 正确方法 + 正向结果。
-      3.FIRE结构（行业分析、热点解读、深度科普）：F（事实） + I（解读） + R（反应） + E（结果）。
-      4.RIDE结构（产品推广、行动号召、风险提示）：R（风险） + I（利益） + D（差异） + E（影响）。
-
-      按照选取的结构按照如下顺序编写文案内容，要求隐晦的推荐产品：
-      - 引人入胜的开头：使用目标用户痛点抓住注意力，理解目标受众的情感需求，引发兴趣和共鸣。
-      - 提供实际案例：通过真实经历和情感故事拉近与观众的距离，增强说服力和实用性。
-      - 生动描述细节：增强真实感画面感。
-      - 设立冲突或疑问：引发好奇心和关注度。
-      - 提供解决方案：针对问题给出具体建议。
-      - 呼吁行动：引导观众采取实际行动。
-
-      给出平台适应能力
-      - 给出b站、小红书平台的优化推荐。
-      
-      给出一行关键词提高搜索引擎排名。
-      已有文本如下：
-` + text;
-    createAIModal(editor, prompt,range);
-    },
-  },
-  {
-    title: "教程文案生成",
-    description: "根据已有内容生成教程文案",
-    icon: <BookOpen size={18} />,
-    command: ({ editor, range }) => {
-      const text = editor.getText();
-      const prompt = `你是一位擅长撰写技术教程的写作助手，能够根据已有文本创作清晰易懂的技术教程。
-
-      请按照以下结构编写教程内容：
-      1. 教程目标：明确说明本教程将教会读者什么
-      2. 前置知识：列出学习本教程所需的基础知识
-      3. 环境准备：说明需要安装的工具和配置
-      4. 核心步骤：
-        - 分步骤详细说明操作过程
-        - 每个步骤包含必要的代码示例
-        - 解释关键概念和原理
-        - 提供常见问题解决方案
-      5. 总结回顾：概括教程要点
-      6. 扩展学习：提供相关进阶学习资源
-      7. 注意事项：列出可能遇到的问题和解决方法
-
-      写作要求：
-      - 语言简洁明了，避免复杂术语
-      - 代码示例要完整且可运行
-      - 重要概念要配图说明
-      - 提供实际应用场景
-      - 包含最佳实践建议
-      - 给出调试和排错技巧
-
-      已有文本如下：
-` + text;
-    createAIModal(editor, prompt,range);
-    },
-  },
-  {
-    title: "课程文案生成",
-    description: "根据已有内容生成专业的课程文案",
-    icon: <Users size={18} />,
-    command: ({ editor, range }) => {
-      const text = editor.getText();
-      const prompt = `你是一位资深的教育内容专家，能够根据已有文本生成专业的课程文案。
-
-      请按照以下要求生成课程文案：
-      1. 课程概述：
-        - 课程名称
-        - 课程目标
-        - 适用人群
-        - 课程时长
-        - 学习方式
-
-      2. 课程大纲：
-        - 模块划分
-        - 每个模块的学习目标
-        - 知识点列表
-        - 课时安排
-
-      3. 课程特色：
-        - 突出课程亮点
-        - 说明教学方法
-        - 展示学习成果
-        - 提供学习支持
-
-      4. 文案要求：
-        - 语言简洁有力
-        - 突出课程价值
-        - 包含吸引人的标题
-        - 使用列表和表格组织内容
-        - 重要内容使用加粗或高亮
-
-      5. 营销文案：
-        - 编写课程宣传语
-        - 设计课程亮点
-        - 提供常见问题解答
-        - 编写学员评价模板
-
-      已有文本如下：
-` + text;
-
-      createAIModal(editor, prompt,range);
-    },
-  },
   {
     title: "Text",
     description: "Just start typing with plain text.",
@@ -495,23 +457,13 @@ export const suggestionItems = createSuggestionItems([
             .chain()
             .focus()
             .deleteRange(range)
-            // .setCodeBlock({ language: 'mermaid' })
-            // .insertContent(textarea.value)
             .insertContent({
-              type: 'codeBlock',
-              attrs: { language: 'mermaid' },
-              content: [{
-                type: 'text',
-                text: textarea.value
-              }]
+              type: 'mermaid',
+              attrs: {
+                code: textarea.value,
+                diagramId: diagramId
+              }
             })
-            // .insertContent({
-            //   type: 'mermaid',
-            //   attrs: {
-            //     code: textarea.value,
-            //     diagramId: diagramId
-            //   }
-            // })
             .run();
 
             
@@ -537,99 +489,25 @@ export const suggestionItems = createSuggestionItems([
       document.addEventListener('keydown', handleKeyDown);
     },
   },
-  // {
-  //   title: "Mermaid2 图表",
-  //   description: "添加 Mermaid 流程图",
-  //   icon: <ChartArea className="w-6 h-6" />,
-  //   command: ({ editor, range }) => {
-  //     const defaultCode = `
-  //                     graph TD;
-  //                     A[开始] --> B[处理];
-  //                     B --> C[结束];
-  //                     `;
-  //     const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  //     editor
-  //       .chain()
-  //       .focus()
-  //       .deleteRange(range)
-  //       .setCodeBlock({ language: 'mermaid' })
-  //       .insertContent(defaultCode)
-  //       .insertContent({
-  //           type: 'mermaid',
-  //           attrs: {
-  //             code: defaultCode,
-  //             diagramId: diagramId
-  //           }
-  //         })
-  //       .run();
-  //   },
-  // },
-  // Remove or comment out the table command since table extensions are not available
-  // {
-  //   title: "表格",
-  //   description: "插入表格",
-  //   searchTerms: ["table", "grid"],
-  //   icon: <Table size={18} />,
-  //   command: ({ editor, range }) => {
-  //     // 插入表格节点
-  //     editor
-  //       .chain()
-  //       .focus()
-  //       .deleteRange(range)
-  //       .insertTable({ 
-  //         rows: 3, 
-  //         cols: 3, 
-  //         withHeaderRow: true 
-  //       })
-  //       .run();
-  //   },
-  // },
   
-  // Alternative: Replace with a simple HTML table insertion
-  // 在表格命令部分，应该可以正常使用：
   {
   title: "表格",
   description: "插入一个3x3的表格",
   searchTerms: ["table", "表格"],
   icon: <TableIcon size={18} />,
   command: ({ editor, range }) => {
+    // @ts-ignore
     editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   },
 },
-  {
-    title: "Youtube",
-    description: "Embed a Youtube video.",
-    searchTerms: ["video", "youtube", "embed"],
-    icon: <Youtube size={18} />,
-    command: ({ editor, range }) => {
-      const videoLink = prompt("Please enter Youtube Video Link");
-      //From https://regexr.com/3dj5t
-      const ytregex = new RegExp(
-        /^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]+)(\S+)?$/,
-      );
 
-      if (videoLink && ytregex.test(videoLink)) {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setYoutubeVideo({
-            src: videoLink,
-          })
-          .run();
-      } else if (videoLink !== null) {
-        alert("Please enter a correct Youtube Video Link");
-      }
-    },
-  },
   {
     title: "Bilibili 视频",
     description: "嵌入 Bilibili 视频", 
     searchTerms: ["video", "bilibili", "embed"],
     icon: <VideoIcon size={18} />,
-    command: ({ editor, range }) => {
-      const bvid = prompt("请输入视频BV号");
+    command: async ({ editor, range }) => {
+      const bvid = await createInputModal("请输入Bilibili视频BV号", "例如: BV1Bu4m1F7zv");
       // const bvid='BV1Bu4m1F7zv'
       if (!bvid) return;
       
@@ -640,12 +518,13 @@ export const suggestionItems = createSuggestionItems([
         .insertContent([{
           type: 'iframe',
           attrs: {
-            src: `//player.bilibili.com/player.html?bvid=${bvid}&p=1&autoplay=1&danmaku=1`,
+            src: `https://player.bilibili.com/player.html?bvid=${bvid}&p=1&autoplay=0&danmaku=0`,
             scrolling: 'no',
             border: '0',
             frameborder: 'no',
             framespacing: '0',
-            allowfullscreen: true,
+            allowfullscreen: 'true',
+            allow: 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; autoplay; fullscreen',
             sandbox: 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms',
             width: '100%',
             height: '500',
@@ -653,31 +532,127 @@ export const suggestionItems = createSuggestionItems([
           }
         }])
         .run();
-    }
-  }
-  // {
-  //   title: "Twitter",
-  //   description: "Embed a Tweet.",
-  //   searchTerms: ["twitter", "embed"],
-  //   icon: <Twitter size={18} />,
-  //   command: ({ editor, range }) => {
-  //     const tweetLink = prompt("Please enter Twitter Link");
-  //     const tweetRegex = new RegExp(/^https?:\/\/(www\.)?x\.com\/([a-zA-Z0-9_]{1,15})(\/status\/(\d+))?(\/\S*)?$/);
+    },
+  },
+  {
+    title: "短视频文案生成",
+    description: "根据已有内容生成短视频文案",
+    icon: <Sparkles size={18} />,
+    command: ({ editor, range }) => {
+      const text = editor.getText();
+      const prompt = `你是一位擅长撰写爆款短视频脚本的写作助力，能够根据已有文本创作吸引目标用户留存的论文。
 
-  //     if (tweetLink && tweetRegex.test(tweetLink)) {
-  //       editor
-  //         .chain()
-  //         .focus()
-  //         .deleteRange(range)
-  //         .setTweet({
-  //           src: tweetLink,
-  //         })
-  //         .run();
-  //     } else if (tweetLink !== null) {
-  //       alert("Please enter a correct Twitter Link");
-  //     }
-  //   },
-  // },
+      给出3个爆款标题：
+      - 使用悬念、反差性提问、数字和数据吸引注意力。
+      - 使用情感词汇、个人经历、触发危机意识或希望引发共鸣。
+      - 运用幽默、比喻、提问式标题创造新颖感。
+
+      给出1个视频简介：概括视频内容
+
+      根据文案类型随机选取一个结构：
+      1.PREP结构（知识分享、经验传递、观点表达）： P（观点）：亮出核心观点。R（理由）：解释观点的依据。E（案例）：用案例证明观点。P（观点回归）：重申结论。
+      2.对比结构（产品评测、生活技巧、错误纠正）：错误操作 + 负面结果 + 正确方法 + 正向结果。
+      3.FIRE结构（行业分析、热点解读、深度科普）：F（事实） + I（解读） + R（反应） + E（结果）。
+      4.RIDE结构（产品推广、行动号召、风险提示）：R（风险） + I（利益） + D（差异） + E（影响）。
+
+      按照选取的结构按照如下顺序编写文案内容，要求隐晦的推荐产品：
+      - 引人入胜的开头：使用目标用户痛点抓住注意力，理解目标受众的情感需求，引发兴趣和共鸣。
+      - 提供实际案例：通过真实经历和情感故事拉近与观众的距离，增强说服力和实用性。
+      - 生动描述细节：增强真实感画面感。
+      - 设立冲突或疑问：引发好奇心和关注度。
+      - 提供解决方案：针对问题给出具体建议。
+      - 呼吁行动：引导观众采取实际行动。
+
+      给出平台适应能力
+      - 给出b站、小红书平台的优化推荐。
+      
+      给出一行关键词提高搜索引擎排名。
+      已有文本如下：
+` + text;
+    createAIModal(editor, prompt,range);
+    },
+  },
+  {
+    title: "教程文案生成",
+    description: "根据已有内容生成教程文案",
+    icon: <BookOpen size={18} />,
+    command: ({ editor, range }) => {
+      const text = editor.getText();
+      const prompt = `你是一位擅长撰写技术教程的写作助手，能够根据已有文本创作清晰易懂的技术教程。
+
+      请按照以下结构编写教程内容：
+      1. 教程目标：明确说明本教程将教会读者什么
+      2. 前置知识：列出学习本教程所需的基础知识
+      3. 环境准备：说明需要安装的工具和配置
+      4. 核心步骤：
+        - 分步骤详细说明操作过程
+        - 每个步骤包含必要的代码示例
+        - 解释关键概念和原理
+        - 提供常见问题解决方案
+      5. 总结回顾：概括教程要点
+      6. 扩展学习：提供相关进阶学习资源
+      7. 注意事项：列出可能遇到的问题和解决方法
+
+      写作要求：
+      - 语言简洁明了，避免复杂术语
+      - 代码示例要完整且可运行
+      - 重要概念要配图说明
+      - 提供实际应用场景
+      - 包含最佳实践建议
+      - 给出调试和排错技巧
+
+      已有文本如下：
+` + text;
+    createAIModal(editor, prompt,range);
+    },
+  },
+  {
+    title: "课程文案生成",
+    description: "根据已有内容生成专业的课程文案",
+    icon: <Users size={18} />,
+    command: ({ editor, range }) => {
+      const text = editor.getText();
+      const prompt = `你是一位资深的教育内容专家，能够根据已有文本生成专业的课程文案。
+
+      请按照以下要求生成课程文案：
+      1. 课程概述：
+        - 课程名称
+        - 课程目标
+        - 适用人群
+        - 课程时长
+        - 学习方式
+
+      2. 课程大纲：
+        - 模块划分
+        - 每个模块的学习目标
+        - 知识点列表
+        - 课时安排
+
+      3. 课程特色：
+        - 突出课程亮点
+        - 说明教学方法
+        - 展示学习成果
+        - 提供学习支持
+
+      4. 文案要求：
+        - 语言简洁有力
+        - 突出课程价值
+        - 包含吸引人的标题
+        - 使用列表和表格组织内容
+        - 重要内容使用加粗或高亮
+
+      5. 营销文案：
+        - 编写课程宣传语
+        - 设计课程亮点
+        - 提供常见问题解答
+        - 编写学员评价模板
+
+      已有文本如下：
+` + text;
+
+      createAIModal(editor, prompt,range);
+    },
+  },
   
 ]);
 
