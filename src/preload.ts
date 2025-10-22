@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     
     // 图片保存功能
     saveImage: (imageBuffer: Uint8Array, fileName: string) => ipcRenderer.invoke('fs:saveImage', imageBuffer, fileName),
+    
+    // 通用媒体文件保存功能（支持视频、音频、图片）
+    saveMedia: (mediaBuffer: Uint8Array, fileName: string, mediaType: 'video' | 'audio' | 'image') => ipcRenderer.invoke('fs:saveMedia', mediaBuffer, fileName, mediaType),
   },
   // AI 生成功能
   ai: {
@@ -82,6 +85,9 @@ declare global {
         
         // 图片保存功能类型声明
         saveImage: (imageBuffer: Uint8Array, fileName: string) => Promise<{ success: boolean; fileName?: string; relativePath?: string; fullPath?: string; error?: string }>;
+        
+        // 通用媒体文件保存功能类型声明
+        saveMedia: (mediaBuffer: Uint8Array, fileName: string, mediaType: 'video' | 'audio' | 'image') => Promise<{ success: boolean; fileName?: string; relativePath?: string; fullPath?: string; error?: string }>;
       };
       ai: {
         generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;

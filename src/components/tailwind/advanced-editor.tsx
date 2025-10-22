@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { handleImageDrop, handleImagePaste } from "novel/plugins";
 import GenerativeMenuSwitch from "./generative/generative-menu-switch";
 import { uploadFn } from "./image-upload";
+import { handleMediaDrop, handleMediaPaste } from "./media-upload";
 import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
 import { Copy } from "@/types/Model";
@@ -122,6 +123,70 @@ const TailwindAdvancedEditor = ({
   const [openLink, setOpenLink] = useState(false);
   const [openAI, setOpenAI] = useState(false);
   const [openAudio,setOpenAudio] = useState(false);
+
+  // 创建综合的拖拽处理函数，支持图片、视频、音频
+  const handleMultiMediaDrop = (view: any, event: DragEvent, moved: boolean, uploadFn: any) => {
+    if (!event.dataTransfer?.files?.length) {
+      return false;
+    }
+
+    const files = Array.from(event.dataTransfer.files);
+    let handled = false;
+
+    // 分别处理不同类型的文件
+    files.forEach(async (file) => {
+      try {
+        if (file.type.startsWith('image/')) {
+          // 图片文件，使用原有的图片处理逻辑
+          handled = handleImageDrop(view, event, moved, uploadFn) || handled;
+        } else if (file.type.startsWith('video/')) {
+          // 视频文件，使用视频处理逻辑
+          const videoDropHandler = handleMediaDrop('video');
+          handled = videoDropHandler(view, event, moved, uploadFn) || handled;
+        } else if (file.type.startsWith('audio/')) {
+          // 音频文件，使用音频处理逻辑
+          const audioDropHandler = handleMediaDrop('audio');
+          handled = audioDropHandler(view, event, moved, uploadFn) || handled;
+        }
+      } catch (error) {
+        console.error('文件处理失败:', error);
+      }
+    });
+
+    return handled;
+  };
+
+  // 创建综合的粘贴处理函数，支持图片、视频、音频
+  const handleMultiMediaPaste = (view: any, event: ClipboardEvent, uploadFn: any) => {
+    if (!event.clipboardData?.files?.length) {
+      return false;
+    }
+
+    const files = Array.from(event.clipboardData.files);
+    let handled = false;
+
+    // 分别处理不同类型的文件
+    files.forEach(async (file) => {
+      try {
+        if (file.type.startsWith('image/')) {
+          // 图片文件，使用原有的图片处理逻辑
+          handled = handleImagePaste(view, event, uploadFn) || handled;
+        } else if (file.type.startsWith('video/')) {
+          // 视频文件，使用视频处理逻辑
+          const videoPasteHandler = handleMediaPaste('video');
+          handled = videoPasteHandler(view, event, uploadFn) || handled;
+        } else if (file.type.startsWith('audio/')) {
+          // 音频文件，使用音频处理逻辑
+          const audioPasteHandler = handleMediaPaste('audio');
+          handled = audioPasteHandler(view, event, uploadFn) || handled;
+        }
+      } catch (error) {
+        console.error('文件处理失败:', error);
+      }
+    });
+
+    return handled;
+  };
 
   //Apply Codeblock Highlighting on the HTML from editor.getHTML()
   const highlightCodeblocks = (content: string) => {
@@ -466,8 +531,8 @@ const TailwindAdvancedEditor = ({
             handleDOMEvents: {
               keydown: (_view, event) => handleCommandNavigation(event),
             },
-            handlePaste: (view, event) => handleImagePaste(view, event, uploadFn),
-            handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
+            handlePaste: (view, event) => handleMultiMediaPaste(view, event, uploadFn),
+            handleDrop: (view, event, _slice, moved) => handleMultiMediaDrop(view, event, moved, uploadFn),
             attributes: {
               class:
                 "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full prose-blue dark:prose-blue",

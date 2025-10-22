@@ -552,6 +552,51 @@ ipcMain.handle('fs:saveImage', async (_event, imageBuffer: Uint8Array, fileName:
   }
 });
 
+// 通用媒体文件保存：将音频、视频等媒体文件保存到对应的文件夹
+ipcMain.handle('fs:saveMedia', async (_event, mediaBuffer: Uint8Array, fileName: string, mediaType: 'video' | 'audio' | 'image') => {
+  try {
+    // 根据媒体类型确定保存目录
+    const mediaDir = path.join(workspaceRoot, 'media', `${mediaType}s`);
+    fs.mkdirSync(mediaDir, { recursive: true });
+    
+    // 生成唯一的文件名
+    const ext = path.extname(fileName) || (mediaType === 'video' ? '.mp4' : mediaType === 'audio' ? '.mp3' : '.png');
+    const baseName = path.basename(fileName, ext);
+    const sanitizedBaseName = sanitizeFileBase(baseName);
+    
+    let finalFileName = `${sanitizedBaseName}${ext}`;
+    let finalPath = path.join(mediaDir, finalFileName);
+    let counter = 1;
+    
+    // 如果文件已存在，添加数字后缀
+    while (fs.existsSync(finalPath)) {
+      finalFileName = `${sanitizedBaseName}-${counter}${ext}`;
+      finalPath = path.join(mediaDir, finalFileName);
+      counter++;
+    }
+    
+    // 将Uint8Array转换为Buffer并保存媒体文件
+    const buffer = Buffer.from(mediaBuffer);
+    fs.writeFileSync(finalPath, buffer);
+    
+    // 返回file://协议的绝对路径，用于在编辑器中引用
+    const fileUrl = `file://${finalPath}`;
+    
+    return { 
+      success: true, 
+      fileName: finalFileName,
+      relativePath: fileUrl,
+      fullPath: finalPath
+    };
+  } catch (err) {
+    console.error(`Error fs:saveMedia (${mediaType}):`, err);
+    return { 
+      success: false, 
+      error: String(err) 
+    };
+  }
+});
+
 // API Key 安全存储管理
 ipcMain.handle('settings:getApiKey', async () => {
   try {

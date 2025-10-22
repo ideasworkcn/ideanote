@@ -21,6 +21,7 @@ import {
 import mermaid from 'mermaid'
 import { createSuggestionItems , Command, renderItems } from "novel/extensions";
 import { uploadFn } from "./image-upload";
+import { mediaUploadFn } from "./media-upload";
 import {  Range } from '@tiptap/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -500,7 +501,89 @@ export const suggestionItems = createSuggestionItems([
     editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   },
 },
+  {
+    title: "上传视频",
+    description: "上传本地视频文件",
+    searchTerms: ["video", "upload", "本地视频"],
+    icon: <VideoIcon size={18} />,
+    command: async ({ editor, range }) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'video/*';
+      input.onchange = async (event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (!file) return;
 
+        try {
+          const result = await mediaUploadFn(file, 'video');
+          if (result.success && result.path) {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent([{
+                type: 'video',
+                attrs: {
+                  src: result.path,
+                  title: file.name,
+                  controls: true,
+                  width: '100%',
+                  height: '400'
+                }
+              }])
+              .run();
+          } else {
+            alert('视频上传失败: ' + (result.error || '未知错误'));
+          }
+        } catch (error) {
+          console.error('视频上传错误:', error);
+          alert('视频上传失败: ' + (error as Error).message);
+        }
+      };
+      input.click();
+    },
+  },
+  {
+    title: "上传音频",
+    description: "上传本地音频文件",
+    searchTerms: ["audio", "upload", "本地音频", "音乐"],
+    icon: <ImageIcon size={18} />, // 暂时使用ImageIcon，后续可以添加音频图标
+    command: async ({ editor, range }) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'audio/*';
+      input.onchange = async (event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          const result = await mediaUploadFn(file, 'audio');
+          if (result.success && result.path) {
+            editor
+              .chain()
+              .focus()
+              .deleteRange(range)
+              .insertContent([{
+                type: 'audio',
+                attrs: {
+                  src: result.path,
+                  title: file.name,
+                  controls: true,
+                  preload: 'metadata'
+                }
+              }])
+              .run();
+          } else {
+            alert('音频上传失败: ' + (result.error || '未知错误'));
+          }
+        } catch (error) {
+          console.error('音频上传错误:', error);
+          alert('音频上传失败: ' + (error as Error).message);
+        }
+      };
+      input.click();
+    },
+  },
   {
     title: "Bilibili 视频",
     description: "嵌入 Bilibili 视频", 

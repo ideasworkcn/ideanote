@@ -35,6 +35,8 @@ import { cx } from "class-variance-authority";
 import { common, createLowlight } from "lowlight";
 import { TableToolbar } from "./TableToolbar";
 import { IframeExtension } from './IframeExtension'
+import { VideoExtension } from './VideoExtension'
+import { AudioExtension } from './AudioExtension'
 
 //TODO I am using cx here to get tailwind autocomplete working, idk if someone else can write a regex to just capture the class key in objects
 const aiHighlight = AIHighlight;
@@ -202,4 +204,6 @@ export const defaultExtensions = [
   TableHeader,
   TableToolbar,
   IframeExtension,
+  VideoExtension,
+  AudioExtension,
 ];
