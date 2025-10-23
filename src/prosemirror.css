@@ -195,16 +195,10 @@ pre code {
   box-shadow: none;
 }
 
-/* Novel.sh inspired drag handle styles - Modern, minimalist design */
+/* Novel.sh inspired drag handle styles - Modern, minimalist design based on Tiptap official documentation */
 
 .drag-handle {
-  position: absolute;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 6px;
-  
-  /* Modern grip icon - cleaner design */
+  /* Modern grip icon - cleaner design based on Tiptap specs */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='4' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='12' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%236B7280'/%3E%3C/svg%3E");
   background-size: 16px 16px;
   background-repeat: no-repeat;
@@ -256,40 +250,154 @@ pre code {
   }
 }
 
-/* Novel-style hover logic - subtle and elegant */
-.ProseMirror > *:hover .drag-handle,
-.ProseMirror > *:has(.drag-handle:hover) .drag-handle {
-  opacity: 0.4;
+.drag-handle {
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out, transform 0.2s ease-in-out, background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  border-radius: 6px;
+  
+  /* Modern grip icon - cleaner design */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='4' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='12' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%236B7280'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  width: 24px;
+  height: 24px;
+  z-index: 50;
+  cursor: grab;
+  
+  /* Position with better spacing - further from content */
+  left: -36px !important;
+  top: 50% !important;
+  transform: translateY(-50%);
+  
+  /* Modern subtle background - only visible on hover */
+  background-color: transparent;
+  border: 1px solid transparent;
+  
+  /* Smooth shadow for depth */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  
+  /* Scale animation for modern feel */
+  transform: translateY(-50%) scale(0.95);
+  
+  /* Add delay to prevent accidental hiding */
+  transition-delay: 0s, 0s, 0s, 0s, 0s;
+  
+  &:hover {
+    opacity: 1 !important;
+    background-color: #F3F4F6;
+    border-color: #E5E7EB;
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+    /* Remove delay on hover for immediate response */
+    transition-delay: 0s;
+  }
+
+  &:active {
+    background-color: #E5E7EB;
+    border-color: #D1D5DB;
+    transform: translateY(-50%) scale(0.98);
+    cursor: grabbing;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  &.hide {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media screen and (max-width: 768px) {
+    display: none;
+    pointer-events: none;
+  }
+}
+
+/* Create a stable hover area that doesn't disappear when moving to drag handle */
+.ProseMirror > * {
+  position: relative;
+}
+
+/* Show drag handle when hovering over the entire block element */
+.ProseMirror > *:hover .drag-handle {
+  opacity: 0.6;
   visibility: visible;
   pointer-events: auto;
   transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateY(-50%) scale(1);
 }
 
-/* Show drag handle when hovering over any ProseMirror content */
-.ProseMirror:hover .drag-handle:not(.hide) {
-  opacity: 0.7;
-}
-
-/* Create a hover area that extends beyond the drag handle */
-.ProseMirror > * {
-  position: relative;
-}
-
-/* Keep drag handle visible when hovering over extended area */
-.ProseMirror > *:hover .drag-handle {
-  opacity: 0.8;
-}
-
-/* Ensure drag handle stays visible when mouse moves to it */
-.ProseMirror > * .drag-handle {
-  pointer-events: auto;
-  transition: opacity 0.2s ease-in-out;
-}
-
-/* Make drag handle fully visible on hover */
+/* Keep drag handle visible when hovering over it directly */
 .ProseMirror > * .drag-handle:hover {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Ensure drag handle stays visible during the transition from block to handle */
+.ProseMirror > * .drag-handle {
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+}
+
+/* Create extended hover area to prevent flickering */
+.ProseMirror > *::before {
+  content: '';
+  position: absolute;
+  left: -50px;
+  top: 0;
+  width: 50px;
+  height: 100%;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+/* Show drag handle when hovering over the extended area */
+.ProseMirror > *:hover::before {
+  pointer-events: auto;
+}
+
+.ProseMirror > *:hover::before + .drag-handle,
+.ProseMirror > *:hover .drag-handle {
+  opacity: 0.6;
+  visibility: visible;
+}
+
+/* Drag handle states based on Tiptap documentation */
+.drag-handle.dragging {
+  opacity: 1 !important;
+  background-color: #3B82F6 !important;
+  border-color: #2563EB !important;
+  cursor: grabbing !important;
+  transform: translateY(-50%) scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.drag-handle.locked {
+  opacity: 1 !important;
+  background-color: #F59E0B !important;
+  border-color: #D97706 !important;
+}
+
+/* Highlight node when drag handle is active */
+.ProseMirror > *.drag-handle-active {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+/* Custom drag handle for different node types */
+.drag-handle[data-node-type="heading"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3 4h10M3 8h10M3 12h6' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+.drag-handle[data-node-type="list"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='4' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='12' r='1' fill='%236B7280'/%3E%3Cline x1='7' y1='4' x2='13' y2='4' stroke='%236B7280' stroke-width='1.5'/%3E%3Cline x1='7' y1='8' x2='13' y2='8' stroke='%236B7280' stroke-width='1.5'/%3E%3Cline x1='7' y1='12' x2='13' y2='12' stroke='%236B7280' stroke-width='1.5'/%3E%3C/svg%3E");
+}
+
+.drag-handle[data-node-type="blockquote"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 3h8M4 7h8M4 11h4' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 
@@ -400,7 +508,7 @@ pre code {
 
 
 pre {
-  background: #0d0d0d;
+  opacity: 0.6 !important; /* 默认可见度 */
   border-radius: 0.5rem;
   color: #fff;
   font-family: "JetBrainsMono", monospace;
@@ -412,8 +520,6 @@ pre {
     font-size: 0.8rem;
     padding: 0;
   }
-
-  .hljs-comment,
   .hljs-quote {
     color: #616161;
   }
@@ -429,27 +535,6 @@ pre {
   .hljs-selector-id,
   .hljs-selector-class {
     color: #f98181;
-  }
-
-  .hljs-number,
-  .hljs-meta,
-  .hljs-built_in,
-  .hljs-builtin-name,
-  .hljs-literal,
-  .hljs-type,
-  .hljs-params {
-    color: #fbbc88;
-  }
-
-  .hljs-string,
-  .hljs-symbol,
-  .hljs-bullet {
-    color: #b9f18d;
-  }
-
-  .hljs-title,
-  .hljs-section {
-    color: #faf594;
   }
 
   .hljs-keyword,
