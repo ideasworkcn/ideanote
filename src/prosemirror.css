@@ -598,7 +598,7 @@ body {
 .ProseMirror {
   /* Ensure proper positioning context for drag handles */
   position: relative;
-  padding-left: 2.5rem !important;
+  padding-left: 3rem !important;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
   outline: none;
