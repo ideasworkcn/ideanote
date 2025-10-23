@@ -176,9 +176,13 @@ const globalDragHandle = GlobalDragHandle.configure({
   dragHandleWidth: 24,
   scrollTreshold: 100,
   // Position the drag handle at the beginning of each line
-  dragHandleSelector: '.ProseMirror > *',
+  dragHandleSelector: '.drag-handle',
+  
+  // Use default drag handle selector - let the extension handle it
+  // Remove conflicting selectors that might interfere
+  customNodes: ['iframe', 'video', 'audio', 'mermaid'],
   // Ensure proper positioning relative to each block element
-  excludeTags: ['script', 'style', 'noscript'],
+  // excludeTags: ['script', 'style', 'noscript'],
   // Fix node boundaries - ensure each paragraph and heading is treated separately
   blockSelector: 'p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol, li, table, .iframe-wrapper, .node-image',
   // Enable drag handle to be shown
