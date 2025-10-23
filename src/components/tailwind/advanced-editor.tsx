@@ -535,31 +535,13 @@ const TailwindAdvancedEditor = ({
           editorProps={{
             handleDOMEvents: {
               keydown: (_view, event) => handleCommandNavigation(event),
-              // 添加拖拽事件处理来防止文本选择
-              dragstart: (view, event) => {
-                // 防止默认的文本拖拽行为
-                if (event.dataTransfer) {
-                  event.dataTransfer.effectAllowed = 'move';
-                  event.dataTransfer.setData('text/html', '');
-                }
-                return false;
-              },
-              dragover: (view, event) => {
-                // 允许拖拽操作
-                event.preventDefault();
-                return false;
-              },
-              drop: (view, event) => {
-                // 处理拖拽放置
-                event.preventDefault();
-                return false;
-              }
+              // 移除冲突的拖拽事件处理，让 GlobalDragHandle 扩展处理拖拽
             },
             handlePaste: (view, event) => handleMultiMediaPaste(view, event, uploadFn),
             handleDrop: (view, event, _slice, moved) => handleMultiMediaDrop(view, event, moved, uploadFn),
             attributes: {
               class:
-                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full prose-blue dark:prose-blue",
+                "ProseMirror prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full prose-blue dark:prose-blue",
             },
           }}
           onUpdate={({ editor }) => {

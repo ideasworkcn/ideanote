@@ -175,19 +175,12 @@ const markdownExtension = MarkdownExtension.configure({
 const globalDragHandle = GlobalDragHandle.configure({
   dragHandleWidth: 24,
   scrollTreshold: 100,
-  // Position the drag handle at the beginning of each line
   dragHandleSelector: '.drag-handle',
-  
+  // Use correct parameter name: excludedTags (not excludeTags)
+  excludedTags: ['script', 'style', 'noscript'],
   // Use default drag handle selector - let the extension handle it
-  // Remove conflicting selectors that might interfere
+  // Remove invalid options that don't exist in the interface
   customNodes: ['iframe', 'video', 'audio', 'mermaid'],
-  // Ensure proper positioning relative to each block element
-  // excludeTags: ['script', 'style', 'noscript'],
-  // Fix node boundaries - ensure each paragraph and heading is treated separately
-  blockSelector: 'p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol, li, table, .iframe-wrapper, .node-image',
-  // Enable drag handle to be shown
-  showDragHandle: true,
-  // Use the default positioning but ensure it's aligned with line start
 });
 
 
