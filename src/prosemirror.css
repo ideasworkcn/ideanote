@@ -1,18 +1,36 @@
 
 
+.ProseMirror .is-editor-empty:first-child {
+  position: relative;
+}
 .ProseMirror .is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  float: left;
+  position: absolute;
+  left: 0;
+  top: 0;
   color: hsl(var(--muted-foreground));
   pointer-events: none;
   height: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ProseMirror .is-empty {
+  position: relative;
 }
 .ProseMirror .is-empty::before {
   content: attr(data-placeholder);
-  float: left;
+  position: absolute;
+  left: 0;
+  top: 0;
   color: hsl(var(--muted-foreground));
   pointer-events: none;
   height: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Custom image styles */
@@ -197,58 +215,7 @@ pre code {
 
 /* Novel.sh inspired drag handle styles - Modern, minimalist design based on Tiptap official documentation */
 
-.drag-handle {
-  /* Modern grip icon - cleaner design based on Tiptap specs */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Ccircle cx='4' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='4' cy='12' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='4' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='8' r='1' fill='%236B7280'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%236B7280'/%3E%3C/svg%3E");
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  background-position: center;
-  width: 24px;
-  height: 24px;
-  z-index: 50;
-  cursor: grab;
-  
-  /* Position with better spacing - further from content */
-  left: -36px !important;
-  top: 50% !important;
-  transform: translateY(-50%);
-  
-  /* Modern subtle background - only visible on hover */
-  background-color: transparent;
-  border: 1px solid transparent;
-  
-  /* Smooth shadow for depth */
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  
-  /* Scale animation for modern feel */
-  transform: translateY(-50%) scale(0.95);
-  
-  &:hover {
-    opacity: 1 !important;
-    background-color: #F3F4F6;
-    border-color: #E5E7EB;
-    transform: translateY(-50%) scale(1);
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-  }
 
-  &:active {
-    background-color: #E5E7EB;
-    border-color: #D1D5DB;
-    transform: translateY(-50%) scale(0.98);
-    cursor: grabbing;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  }
-
-  &.hide {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  @media screen and (max-width: 768px) {
-    display: none;
-    pointer-events: none;
-  }
-}
 
 .drag-handle {
   position: absolute;
