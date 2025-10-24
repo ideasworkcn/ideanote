@@ -670,6 +670,24 @@ ipcMain.handle('settings:getApiKey', async () => {
   }
 });
 
+// 打开文件夹：使用系统文件浏览器打开指定路径
+ipcMain.handle('fs:openFolder', async (_event, folderPath: string) => {
+  try {
+    if (!folderPath || !fs.existsSync(folderPath)) {
+      return { success: false, error: '文件夹路径不存在' };
+    }
+    
+    // 使用 electron 的 shell 模块打开文件夹
+    const { shell } = require('electron');
+    await shell.openPath(folderPath);
+    
+    return { success: true };
+  } catch (err) {
+    console.error('Error fs:openFolder:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
 ipcMain.handle('settings:setApiKey', async (_event, apiKey: string) => {
   try {
     const configPath = path.join(app.getPath('userData'), 'config.json');

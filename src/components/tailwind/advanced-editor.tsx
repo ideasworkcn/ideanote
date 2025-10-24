@@ -399,7 +399,7 @@ const TailwindAdvancedEditor = ({
   if (!initialContent) return null;
 
   return (
-    <div className="relative w-full max-w-screen-2xl">
+    <div className="relative w-full max-w-screen-xl">
       {/* 背景装饰 */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-indigo-50/30 to-purple-50/50 dark:from-blue-950/20 dark:via-indigo-950/10 dark:to-purple-950/20 pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200/20 dark:bg-blue-800/10 rounded-full blur-3xl pointer-events-none" />
@@ -428,7 +428,7 @@ const TailwindAdvancedEditor = ({
       </div>
       
       {/* 操作按钮组 */}
-      <div className="flex absolute right-5 top-5 z-10 mb-5 gap-2">
+      <div className="flex absolute right-8 top-8 z-10 gap-2">
         {showExportMD && (
           <Button 
             variant="outline" 
@@ -527,7 +527,7 @@ const TailwindAdvancedEditor = ({
           initialContent={initialContent}
           extensions={extensions as any}
           className={cn(
-            "relative p-24 min-h-[700px] w-full max-w-screen-2xl transition-all duration-300",
+            "relative p-12 md:p-16 min-h-[700px] w-full max-w-screen-xl transition-all duration-300",
             "bg-white dark:bg-gray-900",
             "sm:mb-[calc(20vh)] sm:rounded-2xl sm:border sm:border-gray-200/50 dark:sm:border-gray-700/50",
             "sm:shadow-2xl sm:shadow-gray-900/10 dark:sm:shadow-black/20"
@@ -541,7 +541,7 @@ const TailwindAdvancedEditor = ({
             handleDrop: (view, event, _slice, moved) => handleMultiMediaDrop(view, event, moved, uploadFn),
             attributes: {
               class:
-                "ProseMirror prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full prose-blue dark:prose-blue",
+                "ProseMirror prose dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full prose-blue dark:prose-blue",
             },
           }}
           onUpdate={({ editor }) => {

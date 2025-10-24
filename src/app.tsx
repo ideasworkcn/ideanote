@@ -7,6 +7,7 @@ import { Copy } from './types/Model';
 import { novelcopy } from './lib/copyContent';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { AboutDialog } from '@/components/AboutDialog';
+import { Button } from '@/components/ui/button';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -260,7 +261,6 @@ const App: React.FC = () => {
     api.ui.onWorkspaceOpened(async (workspacePath: string) => {
       setWorkspacePath(workspacePath);
       setWorkspaceId(getBasename(workspacePath));
-      setShowWelcome(false); // 隐藏欢迎页面
       
       // 重新加载新工作区的数据
       try {
@@ -277,6 +277,8 @@ const App: React.FC = () => {
             setSelectedCopyId(firstCopy.id);
           }
         }
+        // 只有在成功加载数据后才隐藏欢迎页面
+        setShowWelcome(false);
       } catch (error) {
         console.error('Error loading data after workspace change:', error);
       } finally {
@@ -367,18 +369,134 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleUseDefault = useCallback(() => {
-    setShowWelcome(false);
-  }, []);
+  // 使用默认工作区处理函数
+  const handleUseDefault = useCallback(async () => {
+    try {
+      // 先设置工作区路径
+      setWorkspacePath('默认工作区');
+      setWorkspaceId('workspace');
+      
+      // 加载默认工作区的数据
+      setLoading(true);
+      const updated = await getAllCopiesFromFilesystem();
+      setCopies(updated);
+      
+      // 重置选中的文案
+      setSelectedCopyId(null);
+      setCurrentCopy(null);
+      
+      // 如果有文案，选中第一个
+      if (Array.isArray(updated) && updated.length > 0) {
+        const firstCopy = updated[0];
+        if (firstCopy) {
+          setSelectedCopyId(firstCopy.id);
+        }
+      }
+      
+      // 只有在成功加载数据后才隐藏欢迎页面
+      setShowWelcome(false);
+    } catch (error) {
+      console.error('Error loading default workspace:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [getAllCopiesFromFilesystem]);
+
+  // 打开文件夹位置
+  const handleOpenWorkspaceFolder = useCallback(async () => {
+    try {
+      const api = (window as any).electronAPI;
+      if (api && api.filesystem && api.filesystem.openFolder) {
+        await api.filesystem.openFolder(workspacePath);
+      }
+    } catch (error) {
+      console.error('Error opening workspace folder:', error);
+    }
+  }, [workspacePath]);
 
   return (
     <div className="flex min-h-screen">
       {showWelcome ? (
-        <WelcomePage 
-          onSelectWorkspace={handleSelectWorkspace}
-          onUseDefault={handleUseDefault}
-          workspacePath={workspacePath}
-        />
+        <div className="flex w-full">
+          <div className="w-72 border-r border-gray-200 bg-white">
+            <NotionSidebar 
+              searchDialogOpen={searchDialogOpen}
+              setSearchDialogOpen={setSearchDialogOpen}
+              searchTerm={searchTerm}
+              searchResults={searchResults}
+              handleSearch={handleSearch}
+              copies={copies}
+              loading={loading}
+              selectedCopyId={selectedCopyId}
+              workspaceId={workspaceId}
+              handleCopyClick={handleCopyClick}
+              onAddCopy={onAddCopy}
+              handleCopyAction={handleCopyAction}
+            />
+          </div>
+          <div className="flex-1 min-w-0 h-screen overflow-hidden flex flex-col bg-gray-50">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">选择工作区</h2>
+                <p className="text-gray-600 mb-6">请选择或创建一个工作区文件夹来开始创作</p>
+                <div className="space-y-3 max-w-sm mx-auto">
+                  <Button 
+                    onClick={handleSelectWorkspace}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  >
+                    <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h-6"></path>
+                    </svg>
+                    选择工作区文件夹
+                  </Button>
+                  
+                  {workspacePath && (
+                    <Button 
+                      onClick={handleUseDefault}
+                      variant="outline"
+                      className="w-full border-gray-300 hover:bg-gray-50"
+                    >
+                      <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      使用默认工作区
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* 底部文件夹位置显示 */}
+            {workspacePath && (
+              <div className="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
+                <div className="flex items-center text-sm text-gray-600">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                  </svg>
+                  <span>当前位置:</span>
+                  <span className="ml-1 font-medium text-gray-700">{workspacePath}</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleOpenWorkspaceFolder}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                  </svg>
+                  打开文件夹
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <>
           <div className="w-72 border-r border-gray-200 bg-white">
@@ -445,6 +563,28 @@ const App: React.FC = () => {
             setSelectedCopyId(prev => (prev === targetId ? newId : prev));
           }}
         />
+        </div>
+        
+        {/* 底部文件夹位置显示 */}
+        <div className="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
+          <div className="flex items-center text-sm text-gray-600">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+            </svg>
+            <span>当前位置:</span>
+            <span className="ml-1 font-medium text-gray-700">{workspacePath || workspaceId}</span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleOpenWorkspaceFolder}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+            打开文件夹
+          </Button>
         </div>
       </div>
         </>

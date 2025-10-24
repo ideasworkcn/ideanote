@@ -32,21 +32,17 @@ export default function SectionEditPage({ copy, saveCopy }: SectionEditPageProps
   };
 
   return (
-    <div className="container  mx-auto px-4 py-8">
-      <div className="min-w-4xl mx-auto">
-        <div>
-          <div className="">
-            <AdvancedEditor 
-              copy={copy || fallbackCopy}
-              saveCopy={saveCopy}
-              showExportMD={true}
-              showScriptMaking={false}
-              showPPTMaking={false}
-              showSave={true}
-              showShare={false}
-            />
-          </div>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto">
+        <AdvancedEditor 
+          copy={copy || fallbackCopy}
+          saveCopy={saveCopy}
+          showExportMD={true}
+          showScriptMaking={false}
+          showPPTMaking={false}
+          showSave={true}
+          showShare={false}
+        />
       </div>
     </div>
   )

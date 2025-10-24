@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   filesystem: {
     // 基础文件系统操作
     listJsonFiles: () => ipcRenderer.invoke('fs:listJsonFiles'),
+    openFolder: (folderPath: string) => ipcRenderer.invoke('fs:openFolder', folderPath),
     readJsonFile: (id: string) => ipcRenderer.invoke('fs:readJsonFile', id),
     writeJsonFile: (id: string, content: string) => ipcRenderer.invoke('fs:writeJsonFile', id, content),
     // 主题与文案的辅助方法（仍基于 FS）
@@ -78,8 +79,9 @@ declare global {
         onWorkspaceOpened: (callback: (workspacePath: string) => void) => void;
       };
       filesystem: {
-        listJsonFiles: () => Promise<Array<{ id: string; fileName: string; createdAt: string; modifiedAt: string; size: number }>>;
-        readJsonFile: (id: string) => Promise<string>;
+        listJsonFiles: () => Promise<CopyItem[]>;
+  readJsonFile: (id: string) => Promise<string>;
+  openFolder: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
         writeJsonFile: (id: string, content: string) => Promise<{ success: boolean; error?: string }>;
 
         createJsonFile: (copy: any) => Promise<{ success: boolean; fileName: string }>;
@@ -94,6 +96,8 @@ declare global {
         
         // 选择媒体文件功能类型声明
         selectMediaFile: (mediaType: 'video' | 'audio') => Promise<{ success: boolean; filePath?: string; fileUrl?: string; fileName?: string; error?: string }>;
+        
+
       };
       ai: {
         generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;
