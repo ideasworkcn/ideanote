@@ -583,7 +583,7 @@ body {
 
 /* 拖拽时的样式 */
 .dragging {
-  transform: rotate(5deg);
+  transform: none;
   z-index: 1000;
 }
 
@@ -796,6 +796,57 @@ body {
   border: none;
   border-top: 2px solid hsl(var(--border));
   margin: 2rem 0;
+}
+
+/* Mermaid 图表样式 - 自适应编辑区域大小 */
+.ProseMirror [data-mermaid] {
+  margin: 2rem 0; /* 上下边距 */
+  padding: 1.5rem; /* 内边距 */
+  display: flex;
+  justify-content: center; /* 水平居中 */
+  align-items: center; /* 垂直居中 */
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  min-height: 150px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%; /* 占满可用宽度 */
+  box-sizing: border-box; /* 包含内边距在宽度计算内 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.ProseMirror [data-mermaid]:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+/* Mermaid SVG 样式优化 - 自适应容器 */
+.ProseMirror [data-mermaid] svg {
+  max-width: 100%;
+  height: auto;
+  max-height: min(400px, 60vh); /* 根据视口高度调整最大高度 */
+  min-height: 100px;
+  min-width: 100%; /* 确保最小宽度占满容器 */
+  display: block;
+  margin: 0 auto; /* SVG 内部居中 */
+  background: transparent;
+  object-fit: contain; /* 保持比例缩放 */
+  object-position: center; /* 居中显示 */
+}
+
+/* 暗色主题下的 Mermaid 图表 */
+@media (prefers-color-scheme: dark) {
+  .ProseMirror [data-mermaid] {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+    border-color: #334155;
+  }
+  
+  .ProseMirror [data-mermaid]:hover {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 1) 100%);
+  }
 }
 
 /* 图片样式增强 */
