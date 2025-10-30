@@ -6,7 +6,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { MoreVertical, Plus, Trash, Search, Folder, File } from 'lucide-react';
+import { MoreVertical, Plus, Trash, Search, Folder, File, Minimize2, Maximize2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,7 +104,7 @@ export default function NotionSidebar({
   };
 
   return (
-    <div className="w-64 bg-gray-50/80 backdrop-blur-sm border-r border-gray-200 p-3 flex flex-col">
+    <div className="w-full p-3 flex flex-col">
       <div className="flex items-center gap-2 mb-3">
         <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
           <DialogTrigger asChild>
@@ -158,8 +158,9 @@ export default function NotionSidebar({
       </div>
 
       <div className="flex justify-between items-center my-3">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">文案列表</h2>
-        <div className="flex items-center gap-1.5">
+        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide pl-2">文案列表</h2>
+        <div className="flex items-center gap-1">
+          
           <ApiKeySettings />
           <button 
             className="p-1.5 hover:bg-gray-100/80 rounded-lg transition-all duration-150 ease-out"

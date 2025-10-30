@@ -8,6 +8,7 @@ import { novelcopy } from './lib/copyContent';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { AboutDialog } from '@/components/AboutDialog';
 import { Button } from '@/components/ui/button';
+import { Minimize2, PanelLeft, PanelLeftClose } from 'lucide-react';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -30,6 +31,8 @@ const App: React.FC = () => {
   const latestLoadIdRef = useRef<string | null>(null);
   // 关于对话框状态
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
+  // 专注模式状态
+  const [focusMode, setFocusMode] = useState(false);
 
   // 简易 basename 提取（无 node:path）
   const getBasename = useCallback((p: string) => {
@@ -414,6 +417,38 @@ const App: React.FC = () => {
     }
   }, [workspacePath]);
 
+  // 切换专注模式
+  const toggleFocusMode = useCallback(() => {
+    setFocusMode(prev => !prev);
+  }, []);
+
+  // 检测屏幕尺寸并自动调整sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        // 移动端默认折叠
+        setFocusMode(true);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 监听快捷键切换专注模式 (Cmd/Ctrl + Shift + F)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        toggleFocusMode();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [toggleFocusMode]);
+
   return (
     <div className="flex min-h-screen">
       {showWelcome ? (
@@ -499,36 +534,61 @@ const App: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="w-72 border-r border-gray-200 bg-white">
-        <NotionSidebar 
-          searchDialogOpen={searchDialogOpen}
-          setSearchDialogOpen={setSearchDialogOpen}
-          searchTerm={searchTerm}
-          searchResults={searchResults}
-          handleSearch={handleSearch}
-          copies={copies}
-          loading={loading}
-          selectedCopyId={selectedCopyId}
-          workspaceId={workspaceId}
-          handleCopyClick={handleCopyClick}
-          onAddCopy={onAddCopy}
-          handleCopyAction={handleCopyAction}
-        />
-      </div>
-      <div className="flex-1 min-w-0 h-screen overflow-hidden flex flex-col">
-        <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="#" onClick={(e) => e.preventDefault()}>{workspaceId}</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{selectedCopyId ?? '未选择'}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
+          {/* 左侧边栏 - 响应式折叠设计 */}
+          <div className={`${focusMode ? 'w-0 md:w-16' : 'w-72'} transition-all duration-300 ease-in-out border-r border-gray-200 bg-white relative overflow-hidden`}>
+            {/* 折叠/展开按钮 - 带动画效果 */}
+            <button
+              onClick={toggleFocusMode}
+              className={`absolute top-4 z-10 p-2 bg-white border border-gray-200 rounded-full shadow-lg hover:bg-gray-50 transition-all duration-300 hover:scale-110 ${
+                focusMode ? 'right-2 rotate-180' : 'right-2'
+              }`}
+              title={focusMode ? "展开侧边栏" : "收起侧边栏"}
+            >
+              <div className="relative w-4 h-4">
+                <PanelLeftClose className={`absolute inset-0 w-4 h-4 text-gray-600 transition-all duration-300 ${
+                  focusMode ? 'opacity-0 rotate-180 scale-75' : 'opacity-100 rotate-0 scale-100'
+                }`} />
+                <PanelLeft className={`absolute inset-0 w-4 h-4 text-gray-600 transition-all duration-300 ${
+                  focusMode ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-180 scale-75'
+                }`} />
+              </div>
+            </button>
+            
+            <div className={`${focusMode ? 'opacity-0 pointer-events-none' : 'opacity-100'} transition-opacity duration-300 h-full`}>
+              <NotionSidebar 
+                searchDialogOpen={searchDialogOpen}
+                setSearchDialogOpen={setSearchDialogOpen}
+                searchTerm={searchTerm}
+                searchResults={searchResults}
+                handleSearch={handleSearch}
+                copies={copies}
+                loading={loading}
+                selectedCopyId={selectedCopyId}
+                workspaceId={workspaceId}
+                handleCopyClick={handleCopyClick}
+                onAddCopy={onAddCopy}
+                handleCopyAction={handleCopyAction}
+              />
+            </div>
+          </div>
+
+
+
+          {/* 主内容区域 - 响应sidebar折叠状态 */}
+          <div className={`${focusMode ? 'flex-1' : 'flex-1 min-w-0'} h-screen overflow-hidden flex flex-col transition-all duration-300 ease-in-out`}>
+            <div className="px-4 py-2 border-b border-gray-200 bg-white flex-shrink-0">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="#" onClick={(e) => e.preventDefault()}>{workspaceId}</BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{selectedCopyId ?? '未选择'}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
         <div className="flex-1 overflow-y-auto">
           <SectionEditPage 
           copy={
@@ -565,27 +625,29 @@ const App: React.FC = () => {
         />
         </div>
         
-        {/* 底部文件夹位置显示 */}
-        <div className="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center text-sm text-gray-600">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-            </svg>
-            <span>当前位置:</span>
-            <span className="ml-1 font-medium text-gray-700">{workspacePath || workspaceId}</span>
+        {/* 底部文件夹位置显示 - 专注模式下隐藏 */}
+        {!focusMode && (
+          <div className="px-4 py-3 bg-white border-t border-gray-200 flex items-center justify-between">
+            <div className="flex items-center text-sm text-gray-600">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+              </svg>
+              <span>当前位置:</span>
+              <span className="ml-1 font-medium text-gray-700">{workspacePath || workspaceId}</span>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleOpenWorkspaceFolder}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+              </svg>
+              打开文件夹
+            </Button>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleOpenWorkspaceFolder}
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-            </svg>
-            打开文件夹
-          </Button>
-        </div>
+        )}
       </div>
         </>
       )}
