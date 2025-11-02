@@ -713,10 +713,36 @@ ipcMain.handle('settings:setApiKey', async (_event, apiKey: string) => {
   }
 });
 
+// 获取模型选择
+ipcMain.handle('settings:getModel', async () => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    const config = readJsonSafe(configPath);
+    return config?.selectedModel || 'deepseek';
+  } catch (err) {
+    console.error('Error getting model:', err);
+    return 'deepseek';
+  }
+});
+
+// 设置模型选择
+ipcMain.handle('settings:setModel', async (_event, model: string) => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    const config = readJsonSafe(configPath) || {};
+    config.selectedModel = model;
+    writeJsonSafe(configPath, config);
+    return { success: true };
+  } catch (err) {
+    console.error('Error setting model:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
 // AI 生成：处理 AI 文本生成请求
 ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, command?: string) => {
   try {
-    // 从安全存储中获取 API Key
+    // 从安全存储中获取 API Key 和模型选择
     const configPath = path.join(app.getPath('userData'), 'config.json');
     const config = readJsonSafe(configPath);
     
@@ -730,8 +756,32 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
     }
     
     if (!apiKey || apiKey.trim() === '') {
-      throw new Error("请先在设置中配置 DeepSeek API Key");
+      throw new Error("请先在设置中配置 API Key");
     }
+
+    // 获取选择的模型
+    const selectedModel = config?.selectedModel || 'deepseek';
+    
+    // 模型配置
+    const modelConfig = {
+      deepseek: {
+        endpoint: 'https://api.deepseek.com/v1/chat/completions',
+        model: 'deepseek-chat',
+        errorPrefix: 'DeepSeek API'
+      },
+      // openai: {
+      //   endpoint: 'https://api.openai.com/v1/chat/completions',
+      //   model: 'gpt-3.5-turbo',
+      //   errorPrefix: 'OpenAI API'
+      // },
+      qwen3: {
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+        model: 'qwen3-max',
+        errorPrefix: 'Qwen3 API'
+      }
+    };
+    
+    const currentConfig = modelConfig[selectedModel as keyof typeof modelConfig];
 
     const BASE_ROLE = "你是youtube视频博主，拥有百万粉丝账号操盘经验.";
     const COMMON_REQUIREMENTS = 
@@ -787,15 +837,18 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
       { role: "user", content: userContent }
     ];
 
-    // 使用 fetch 调用 DeepSeek API (流式响应)
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    // 使用 fetch 调用相应的 API (流式响应)
+    let response;
+    
+    // 所有模型现在都使用 OpenAI 兼容格式
+    response = await fetch(currentConfig.endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: currentConfig.model,
         stream: true,
         temperature: 1.2,
         messages,
@@ -803,7 +856,7 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
     });
 
     if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+      throw new Error(`${currentConfig.errorPrefix} error: ${response.status} ${response.statusText}`);
     }
 
     // 返回流式响应的 ReadableStream
@@ -823,7 +876,7 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
 // 流式AI生成处理器 - 参考Next.js简化版本
 ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string, command?: string) => {
   try {
-    // 获取API密钥
+    // 获取API密钥和模型选择
     const configPath = path.join(app.getPath('userData'), 'config.json');
     const config = readJsonSafe(configPath);
     
@@ -833,8 +886,32 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
     }
     
     if (!apiKey) {
-      throw new Error("请先在设置中配置 DeepSeek API Key");
+      throw new Error("请先在设置中配置 API Key");
     }
+
+    // 获取选择的模型
+    const selectedModel = config?.selectedModel || 'deepseek';
+    
+    // 模型配置
+    const modelConfig = {
+      deepseek: {
+        endpoint: 'https://api.deepseek.com/v1/chat/completions',
+        model: 'deepseek-chat',
+        errorPrefix: 'DeepSeek API'
+      },
+      openai: {
+        endpoint: 'https://api.openai.com/v1/chat/completions',
+        model: 'gpt-3.5-turbo',
+        errorPrefix: 'OpenAI API'
+      },
+      qwen3: {
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+        model: 'qwen3-32b',
+        errorPrefix: 'Qwen3 API'
+      }
+    };
+    
+    const currentConfig = modelConfig[selectedModel as keyof typeof modelConfig];
 
     const BASE_ROLE = "你是youtube视频博主，拥有百万粉丝账号操盘经验.";
     
@@ -852,14 +929,17 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
                        option === 'generate' ? prompt : `现有文本是：${prompt}`;
 
     // 使用类似OpenAI SDK的方式调用API
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    let response;
+    
+    // 所有模型现在都使用 OpenAI 兼容格式
+    response = await fetch(currentConfig.endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: currentConfig.model,
         stream: true,
         temperature: 1.2,
         messages: [systemMessage, { role: "user", content: userContent }],
@@ -867,7 +947,7 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`${currentConfig.errorPrefix} error: ${response.status}`);
     }
 
     // 简化的流处理 - 参考Next.js ReadableStream模式

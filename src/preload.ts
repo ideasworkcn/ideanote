@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   settings: {
     getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
     setApiKey: (apiKey: string) => ipcRenderer.invoke('settings:setApiKey', apiKey),
+    getModel: () => ipcRenderer.invoke('settings:getModel'),
+    setModel: (model: string) => ipcRenderer.invoke('settings:setModel', model),
   },
   // UI / 菜单事件
   ui: {
@@ -106,6 +108,8 @@ declare global {
       settings: {
         getApiKey: () => Promise<{ success: boolean; apiKey?: string; error?: string }>;
         setApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
+        getModel: () => Promise<string | null>;
+        setModel: (model: string) => Promise<{ success: boolean; error?: string }>;
       };
       // IPC 事件监听器
       on: (channel: string, callback: (...args: any[]) => void) => void;

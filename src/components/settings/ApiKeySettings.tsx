@@ -11,6 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Settings, Key, Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 interface ApiKeySettingsProps {
@@ -20,6 +27,7 @@ interface ApiKeySettingsProps {
 const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [selectedModel, setSelectedModel] = useState('deepseek');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -39,6 +47,11 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
       if (result.success && result.apiKey) {
         setApiKey(result.apiKey);
       }
+      // Load model preference
+      const model = await window.electronAPI.settings.getModel();
+      if (model) {
+        setSelectedModel(model);
+      }
     } catch (error) {
       console.error('Failed to load API key:', error);
       setMessage({ type: 'error', text: '加载 API Key 失败' });
@@ -53,14 +66,16 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
       setMessage(null);
 
       const result = await window.electronAPI.settings.setApiKey(apiKey.trim());
-      if (result.success) {
+      const modelResult = await window.electronAPI.settings.setModel(selectedModel);
+      
+      if (result.success && modelResult.success) {
         setMessage({ type: 'success', text: 'API Key 保存成功！' });
         setTimeout(() => {
           setIsOpen(false);
           setMessage(null);
         }, 1500);
       } else {
-        setMessage({ type: 'error', text: result.error || '保存失败' });
+        setMessage({ type: 'error', text: result.error || modelResult.error || '保存失败' });
       }
     } catch (error) {
       console.error('Failed to save API key:', error);
@@ -80,10 +95,12 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
       setIsTesting(true);
       setMessage(null);
 
-      // 先保存 API Key
+      // 先保存 API Key 和模型选择
       const saveResult = await window.electronAPI.settings.setApiKey(apiKey.trim());
-      if (!saveResult.success) {
-        setMessage({ type: 'error', text: '保存 API Key 失败' });
+      const modelResult = await window.electronAPI.settings.setModel(selectedModel);
+      
+      if (!saveResult.success || !modelResult.success) {
+        setMessage({ type: 'error', text: '保存设置失败' });
         return;
       }
 
@@ -138,13 +155,13 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold flex items-center gap-2">
             <Key className="h-5 w-5" />
-            DeepSeek API 设置
+            AI API 设置
           </DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="api-key" className="text-sm font-medium">DeepSeek API Key</Label>
+            <Label htmlFor="api-key" className="text-sm font-medium">API Key</Label>
             <div className="relative">
               <Input
                 id="api-key"
@@ -171,7 +188,24 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
               </Button>
             </div>
             <p className="text-xs text-gray-500">
-              您的 API Key 将被安全加密存储在本地
+              输入所选模型的 API Key，将被安全加密存储在本地
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="model-select" className="text-sm font-medium">选择 AI 模型</Label>
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger id="model-select" className="w-full">
+                <SelectValue placeholder="选择模型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deepseek">DeepSeek</SelectItem>
+                {/* <SelectItem value="openai">OpenAI</SelectItem> */}
+                <SelectItem value="qwen3">Qwen3</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              选择您要使用的 AI 模型（不同模型需要对应的 API Key）
             </p>
           </div>
 
@@ -234,10 +268,10 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
           <div className="border-t pt-4">
             <h4 className="text-sm font-medium mb-2">如何获取 API Key？</h4>
             <div className="text-xs text-gray-600 space-y-1">
-              <p>1. 访问 <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">DeepSeek 开放平台</a></p>
-              <p>2. 注册账号并登录</p>
-              <p>3. 在 API Keys 页面创建新的 API Key</p>
-              <p>4. 复制 API Key 并粘贴到上方输入框中</p>
+              <p>• <strong>DeepSeek:</strong> 访问 <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">DeepSeek 开放平台</a></p>
+              {/* <p>• <strong>OpenAI:</strong> 访问 <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">OpenAI 平台</a></p> */}
+              <p>• <strong>Qwen3:</strong> 访问 <a href="https://bailian.console.aliyun.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">阿里云 DashScope</a></p>
+              <p>注册账号并创建 API Key，然后复制到上方输入框中</p>
             </div>
           </div>
         </div>
