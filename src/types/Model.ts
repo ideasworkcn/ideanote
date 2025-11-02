@@ -9,6 +9,14 @@ export interface Copy {
   pptContent?: string;
 }
 
+export interface CopyItem {
+  id: string;
+  fileName: string;
+  createdAt: string;
+  modifiedAt: string;
+  size: number;
+}
+
 
 
 

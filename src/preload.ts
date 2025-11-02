@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { CopyItem } from './types/Model';
 
 // 暴露安全的文件系统 API 给渲染进程（统一入口）
 contextBridge.exposeInMainWorld('electronAPI', {
