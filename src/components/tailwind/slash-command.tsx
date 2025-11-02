@@ -30,37 +30,50 @@ import { createRoot } from 'react-dom/client';
 // 新增输入对话框函数
 const createInputModal = (title: string, placeholder: string = ''): Promise<string | null> => {
   return new Promise((resolve) => {
+    // 创建遮罩层 - macOS风格的模糊背景
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-200 bg-opacity-20';
+    modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm';
     
+    // 创建模态框内容 - macOS风格
     const modalContent = document.createElement('div');
-    modalContent.className = 'bg-white rounded-lg shadow-lg w-full max-w-md p-6';
+    modalContent.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden';
     modal.appendChild(modalContent);
 
-    // 标题
+    // 标题区域 - macOS风格
+    const titleContainer = document.createElement('div');
+    titleContainer.className = 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750';
+    modalContent.appendChild(titleContainer);
+    
     const titleElement = document.createElement('h3');
-    titleElement.className = 'text-lg font-semibold mb-4 text-gray-900';
+    titleElement.className = 'text-base font-medium text-gray-900 dark:text-gray-100';
     titleElement.textContent = title;
-    modalContent.appendChild(titleElement);
+    titleContainer.appendChild(titleElement);
 
-    // 输入框
+    // 内容区域
+    const contentArea = document.createElement('div');
+    contentArea.className = 'px-6 py-4';
+    modalContent.appendChild(contentArea);
+
+    // 输入框 - macOS风格
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4';
+    input.className = 'w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-500';
     input.placeholder = placeholder;
-    modalContent.appendChild(input);
+    contentArea.appendChild(input);
 
-    // 按钮容器
+    // 按钮容器 - macOS风格
     const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'flex justify-end gap-2';
+    buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700';
     
-    const confirmButton = document.createElement('button');
-    confirmButton.className = 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700';
-    confirmButton.textContent = '确认';
-
+    // 取消按钮 - macOS风格
     const cancelButton = document.createElement('button');
-    cancelButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200';
+    cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400';
     cancelButton.textContent = '取消';
+
+    // 确认按钮 - macOS风格（蓝色主按钮）
+    const confirmButton = document.createElement('button');
+    confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500';
+    confirmButton.textContent = '确认';
 
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(confirmButton);
@@ -71,6 +84,7 @@ const createInputModal = (title: string, placeholder: string = ''): Promise<stri
     
     // 聚焦到输入框
     input.focus();
+    input.select();
 
     // 确认按钮点击事件
     confirmButton.onclick = () => {
@@ -103,36 +117,51 @@ const createInputModal = (title: string, placeholder: string = ''): Promise<stri
       }
     };
     document.addEventListener('keydown', handleKeyDown);
+
+    // 点击遮罩层关闭弹窗（macOS风格）
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        cancelButton.click();
+      }
+    });
   });
 };
 
-// 新增公共方法
+// 新增公共方法 - 优化为macOS风格
 const createAIModal = (editor: any, prompt: string,range:Range) => {
   editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
-  // 创建弹出框
+  // 创建弹出框 - macOS风格
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-gray-200 bg-opacity-20';
+  modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm';
   
   const modalContent = document.createElement('div');
-  modalContent.className = 'bg-white rounded-lg shadow-lg w-full max-w-2xl h-[500px] flex flex-col';
+  modalContent.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col';
   modal.appendChild(modalContent);
+
+  // 标题区域 - macOS风格
+  const titleContainer = document.createElement('div');
+  titleContainer.className = 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750';
+  titleContainer.innerHTML = '<h3 class="text-base font-medium text-gray-900 dark:text-gray-100">AI 内容生成</h3>';
+  modalContent.appendChild(titleContainer);
 
   // 创建内容显示区域
   const contentDiv = document.createElement('div');
-  contentDiv.className = 'prose prose-sm p-6 overflow-y-auto flex-1 w-full max-w-2xl';
+  contentDiv.className = 'prose prose-sm dark:prose-invert p-6 overflow-y-auto flex-1 w-full max-w-none bg-white dark:bg-gray-800';
   modalContent.appendChild(contentDiv);
 
-  // 创建操作按钮
+  // 创建操作按钮 - macOS风格
   const buttonContainer = document.createElement('div');
-  buttonContainer.className = 'flex justify-end gap-2 p-4 border-t border-gray-200';
+  buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700';
   
-  const confirmButton = document.createElement('button');
-  confirmButton.className = 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700';
-  confirmButton.textContent = '确认';
-
+  // 取消按钮 - macOS风格
   const cancelButton = document.createElement('button');
-  cancelButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200';
+  cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400';
   cancelButton.textContent = '取消';
+
+  // 确认按钮 - macOS风格（蓝色主按钮）
+  const confirmButton = document.createElement('button');
+  confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  confirmButton.textContent = '确认';
 
   buttonContainer.appendChild(cancelButton);
   buttonContainer.appendChild(confirmButton);
@@ -257,7 +286,15 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   // 取消按钮点击事件
   cancelButton.onclick = () => {
     document.body.removeChild(modal);
+    cleanup();
   };
+
+  // 点击遮罩层关闭弹窗（macOS风格）
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      cancelButton.click();
+    }
+  });
 };
 
 export const suggestionItems = createSuggestionItems([
