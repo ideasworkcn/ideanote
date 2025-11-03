@@ -30,18 +30,18 @@ import { createRoot } from 'react-dom/client';
 // 新增输入对话框函数
 const createInputModal = (title: string, placeholder: string = ''): Promise<string | null> => {
   return new Promise((resolve) => {
-    // 创建遮罩层 - macOS风格的模糊背景
+    // 创建遮罩层 - macOS风格的透明模糊背景
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm';
+    modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-20 backdrop-blur-md';
     
-    // 创建模态框内容 - macOS风格
+    // 创建模态框内容 - macOS透明风格
     const modalContent = document.createElement('div');
-    modalContent.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden';
+    modalContent.className = 'bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-2xl w-full max-w-md mx-4 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden flex flex-col backdrop-blur-xl';
     modal.appendChild(modalContent);
 
     // 标题区域 - macOS风格
     const titleContainer = document.createElement('div');
-    titleContainer.className = 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750';
+    titleContainer.className = 'px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gray-50/80 dark:bg-gray-750/80';
     modalContent.appendChild(titleContainer);
     
     const titleElement = document.createElement('h3');
@@ -49,30 +49,30 @@ const createInputModal = (title: string, placeholder: string = ''): Promise<stri
     titleElement.textContent = title;
     titleContainer.appendChild(titleElement);
 
-    // 内容区域
+    // 内容区域 - 添加最大高度限制
     const contentArea = document.createElement('div');
-    contentArea.className = 'px-6 py-4';
+    contentArea.className = 'px-6 py-4 max-h-[40vh] overflow-y-auto';
     modalContent.appendChild(contentArea);
 
     // 输入框 - macOS风格
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-500';
+    input.className = 'w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-700/80 border border-gray-300/70 dark:border-gray-600/70 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 backdrop-blur-sm';
     input.placeholder = placeholder;
     contentArea.appendChild(input);
 
     // 按钮容器 - macOS风格
     const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700';
+    buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50/80 dark:bg-gray-750/80 border-t border-gray-200/50 dark:border-gray-700/50';
     
-    // 取消按钮 - macOS风格
+    // 取消按钮 - macOS风格（透明按钮）
     const cancelButton = document.createElement('button');
-    cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400';
+    cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white/60 dark:bg-gray-700/60 border border-gray-300/50 dark:border-gray-600/50 rounded-md hover:bg-white/80 dark:hover:bg-gray-700/80 focus:outline-none focus:ring-1 focus:ring-gray-400 backdrop-blur-sm';
     cancelButton.textContent = '取消';
 
-    // 确认按钮 - macOS风格（蓝色主按钮）
+    // 确认按钮 - macOS风格（透明蓝色主按钮）
     const confirmButton = document.createElement('button');
-    confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500';
+    confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600/90 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 backdrop-blur-sm';
     confirmButton.textContent = '确认';
 
     buttonContainer.appendChild(cancelButton);
@@ -127,40 +127,51 @@ const createInputModal = (title: string, placeholder: string = ''): Promise<stri
   });
 };
 
-// 新增公共方法 - 优化为macOS风格
+// 新增公共方法 - 优化为macOS风格（透明背景）
 const createAIModal = (editor: any, prompt: string,range:Range) => {
   editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
-  // 创建弹出框 - macOS风格
+  // 创建弹出框 - macOS风格透明背景
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm';
+  modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-20 backdrop-blur-md';
   
   const modalContent = document.createElement('div');
-  modalContent.className = 'bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl mx-4 border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col';
+  modalContent.className = 'bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-2xl w-full max-w-3xl mx-4 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden flex flex-col backdrop-blur-xl';
   modal.appendChild(modalContent);
 
   // 标题区域 - macOS风格
   const titleContainer = document.createElement('div');
-  titleContainer.className = 'px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750';
+  titleContainer.className = 'px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gray-50/80 dark:bg-gray-750/80';
   titleContainer.innerHTML = '<h3 class="text-base font-medium text-gray-900 dark:text-gray-100">AI 内容生成</h3>';
   modalContent.appendChild(titleContainer);
 
-  // 创建内容显示区域
+  // 创建内容显示区域 - 添加高度限制和滚动
   const contentDiv = document.createElement('div');
-  contentDiv.className = 'prose prose-sm dark:prose-invert p-6 overflow-y-auto flex-1 w-full max-w-none bg-white dark:bg-gray-800';
+  contentDiv.className = 'prose prose-sm dark:prose-invert p-6 overflow-y-auto flex-1 w-full max-w-none bg-transparent max-h-[60vh]';
   modalContent.appendChild(contentDiv);
 
-  // 创建操作按钮 - macOS风格
+  // 创建加载状态指示器
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'flex items-center justify-center p-8 text-gray-500 dark:text-gray-400';
+  loadingDiv.innerHTML = `
+    <div class="flex flex-col items-center space-y-3">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      <div class="text-sm">AI 正在思考中...</div>
+    </div>
+  `;
+  contentDiv.appendChild(loadingDiv);
+
+  // 创建操作按钮 - macOS风格（更透明）
   const buttonContainer = document.createElement('div');
-  buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700';
+  buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50/60 dark:bg-gray-750/60 border-t border-gray-200/40 dark:border-gray-700/40';
   
-  // 取消按钮 - macOS风格
+  // 取消按钮 - macOS风格（透明按钮）
   const cancelButton = document.createElement('button');
-  cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400';
+  cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-700/50 border border-gray-300/40 dark:border-gray-600/40 rounded-md hover:bg-white/70 dark:hover:bg-gray-700/70 focus:outline-none focus:ring-1 focus:ring-gray-400 backdrop-blur-sm';
   cancelButton.textContent = '取消';
 
-  // 确认按钮 - macOS风格（蓝色主按钮）
+  // 确认按钮 - macOS风格（透明蓝色主按钮）
   const confirmButton = document.createElement('button');
-  confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600/80 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 backdrop-blur-sm';
   confirmButton.textContent = '确认';
 
   buttonContainer.appendChild(cancelButton);
@@ -174,6 +185,11 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   // 使用流式数据处理逻辑
   const handleStreamChunk = (_event: any, chunk: string) => {
     buffer += chunk;
+    
+    // 移除加载指示器（如果存在）
+    if (loadingDiv && loadingDiv.parentNode) {
+      loadingDiv.remove();
+    }
     
     // 使用React Markdown渲染器替代正则表达式
     const root = createRoot(contentDiv);
@@ -248,6 +264,10 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   };
 
   const handleStreamError = (_event: any, errorMessage: string) => {
+    // 移除加载指示器（如果存在）
+    if (loadingDiv && loadingDiv.parentNode) {
+      loadingDiv.remove();
+    }
     contentDiv.innerHTML = `<div class="text-red-500 p-2">生成失败: ${errorMessage}</div>`;
     cleanup();
   };
@@ -267,6 +287,10 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   // 调用AI接口进行文本续写
   (window as any).electronAPI.ai.generateStream(prompt, 'generate')
     .catch((error: Error) => {
+      // 移除加载指示器（如果存在）
+      if (loadingDiv && loadingDiv.parentNode) {
+        loadingDiv.remove();
+      }
       contentDiv.innerHTML = `<div class="text-red-500 p-2">生成失败: ${error.message}</div>`;
       cleanup();
     });
