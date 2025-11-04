@@ -30,15 +30,21 @@ export const MermaidExtension = Node.create({
       'data-mermaid': '',
       'data-code': node.attrs.code,
       'data-diagram-id': node.attrs.diagramId || `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      class: 'border border-gray-200 p-4 rounded-lg my-4 cursor-pointer hover:bg-gray-50 transition-colors' 
+      class: 'border border-gray-200 p-4 rounded-lg my-4 group relative' 
     }, node.attrs.code];  // 将代码作为内容保存
   },
 
   addNodeView() {
     return ({ node, editor }) => {
       const container = document.createElement('div');
-      container.className = 'relative w-full';
+      container.className = 'relative w-full group';
 
+      // 创建编辑按钮（右上角）
+      const editButton = document.createElement('button');
+      editButton.className = 'absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/90 dark:bg-gray-800/90 border border-gray-300 dark:border-gray-600 rounded-md p-1.5 shadow-sm hover:bg-white dark:hover:bg-gray-700 hover:scale-105 z-20';
+      editButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+      editButton.style.color = '#6b7280'; // gray-500
+      editButton.title = '编辑图表';
 
       // 动态加载 Mermaid
       const initMermaid = async () => {
@@ -57,9 +63,16 @@ export const MermaidExtension = Node.create({
           const oldSvg = container.querySelector('svg');
           if (oldSvg) oldSvg.remove();
           
-          container.innerHTML = svg;
+          // 清空容器并添加图表
+          container.innerHTML = '';
+          container.appendChild(editButton);
+          
+          const svgContainer = document.createElement('div');
+          svgContainer.innerHTML = svg;
+          container.appendChild(svgContainer);
+          
             // 为生成的 SVG 添加居中样式
-            const newSvg = container.querySelector('svg');
+            const newSvg = svgContainer.querySelector('svg');
             if (newSvg) {
                 newSvg.style.margin = '0 auto';
                 newSvg.style.width = 'auto';
@@ -73,16 +86,18 @@ export const MermaidExtension = Node.create({
             }
 
         } catch (e) {
-          container.innerHTML = `
-            <div class="p-4 border border-red-500/20 bg-red-50 text-red-600 rounded-md">
-              ${e instanceof Error ? e.message : '图表渲染错误'}
-            </div>
-          `;
+          container.innerHTML = '';
+          container.appendChild(editButton);
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'p-4 border border-red-500/20 bg-red-50 text-red-600 rounded-md';
+          errorDiv.textContent = e instanceof Error ? e.message : '图表渲染错误';
+          container.appendChild(errorDiv);
         }
       };
 
-      // 点击编辑
-      container.onclick = () => {
+      // 编辑按钮点击事件
+      editButton.onclick = (e) => {
+        e.stopPropagation(); // 防止事件冒泡
         if (!editor.isEditable) return;
 
         // 创建编辑模态框
