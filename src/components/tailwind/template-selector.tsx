@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { FileText, Sparkles, BookOpen, Users, Wand2, X, Search } from "lucide-react";
+import { X, Search, Edit3, Trash2, Plus, Save, Download, Upload, AlertTriangle } from "lucide-react";
 import { createAIModal } from "./slash-command";
 import { Range } from '@tiptap/core';
 import { cn } from "@/lib/utils";
@@ -8,11 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { 
+  getCustomTemplates, 
+  saveCustomTemplate, 
+  updateCustomTemplate, 
+  deleteCustomTemplate,
+  exportTemplates,
+  importTemplates,
+  CustomTemplate 
+} from "@/lib/template-storage";
 
 interface TemplateItem {
   title: string;
   description: string;
-  icon: React.ReactNode;
   prompt: string;
 }
 
@@ -20,7 +30,6 @@ const templateItems: TemplateItem[] = [
   {
     title: "短视频文案",
     description: "生成吸引人的短视频脚本",
-    icon: <Sparkles size={16} />,
     prompt: `你是一位擅长撰写精简简洁爆款短视频脚本的写作助力，能够根据已有文本创作吸引目标用户留存的论文。
 
 给出3个爆款标题：
@@ -52,7 +61,6 @@ const templateItems: TemplateItem[] = [
   {
     title: "教程文案",
     description: "创建清晰的技术教程",
-    icon: <BookOpen size={16} />,
     prompt: `你是一位擅长撰写技术教程的写作助手，能够根据已有文本创作清晰易懂的技术教程。
 
 请按照以下结构编写教程内容：
@@ -79,7 +87,6 @@ const templateItems: TemplateItem[] = [
   {
     title: "课程文案",
     description: "制作专业的课程内容",
-    icon: <Users size={16} />,
     prompt: `你是一位资深的教育内容专家，能够根据已有文本生成专业的课程文案。
 
 请按照以下要求生成课程文案：
@@ -118,7 +125,6 @@ const templateItems: TemplateItem[] = [
   {
     title: "何同学风格",
     description: "生活化比喻+故事叙述",
-    icon: <Users size={16} />,
     prompt: `你现在是B站UP主"老师好我叫何同学"，擅长用生活化的语言和生动的比喻把复杂的技术概念讲清楚。
 
 何同学文案特点：
@@ -144,7 +150,6 @@ const templateItems: TemplateItem[] = [
   {
     title: "通用写作",
     description: "基础的内容创作和优化",
-    icon: <FileText size={16} />,
     prompt: `你是一位专业的写作助手，请根据提供的文本内容进行创作和优化。
 
 写作要求：
@@ -167,7 +172,12 @@ interface TemplateSelectorProps {
 export const TemplateSelector = ({ editor, onClose }: TemplateSelectorProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -176,11 +186,19 @@ export const TemplateSelector = ({ editor, onClose }: TemplateSelectorProps) => 
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const handleTemplateSelect = (template: TemplateItem) => {
+  // 加载自定义模板
+  useEffect(() => {
+    setCustomTemplates(getCustomTemplates());
+  }, []);
+
+  // 处理模板选择
+  const handleTemplateSelect = (template: TemplateItem | CustomTemplate) => {
+    setSelectedTemplate(template);
+    
     // Try to get editor instance - check both passed prop and global window.editorInstance
     const activeEditor = editor || (window as any).editorInstance;
     
@@ -206,7 +224,8 @@ export const TemplateSelector = ({ editor, onClose }: TemplateSelectorProps) => 
     console.log('Editor validation passed, proceeding with template application');
     
     const text = activeEditor.getText();
-    const fullPrompt = template.prompt + '\n\n' + text;
+    const prompt = template.prompt;
+    const fullPrompt = prompt + '\n\n' + text;
     
     // 获取文档末尾位置，而不是当前光标位置
     const docSize = activeEditor.state.doc.content.size;
@@ -225,110 +244,447 @@ export const TemplateSelector = ({ editor, onClose }: TemplateSelectorProps) => 
     onClose();
   };
 
+  // 开始编辑模板
+  const handleEditTemplate = (template: CustomTemplate) => {
+    setEditingTemplate({ ...template });
+    setIsEditing(true);
+  };
+
+  // 保存编辑的模板
+  const handleSaveTemplate = () => {
+    if (!editingTemplate) return;
+
+    // 移除 icon 字段
+    const { icon, ...templateToSave } = editingTemplate;
+
+    try {
+      if (editingTemplate.id) {
+        // 更新现有模板
+        updateCustomTemplate(editingTemplate.id, templateToSave);
+      } else {
+        // 创建新模板
+        saveCustomTemplate(templateToSave);
+      }
+      
+      setCustomTemplates(getCustomTemplates());
+      setIsEditing(false);
+      setEditingTemplate(null);
+    } catch (error) {
+      alert('保存失败：' + (error as Error).message);
+    }
+  };
+
+  // 处理删除模板
+  const handleDeleteTemplate = (templateId: string) => {
+    console.log('开始删除模板:', templateId);
+    const templateToDelete = customTemplates.find(t => t.id === templateId);
+    console.log('找到的模板:', templateToDelete);
+    if (templateToDelete) {
+      setEditingTemplate(templateToDelete);
+      setShowDeleteConfirm(true);
+      console.log('删除确认状态已设置');
+    }
+  };
+
+  // 确认删除模板
+  const confirmDeleteTemplate = () => {
+    console.log('确认删除模板:', editingTemplate);
+    if (editingTemplate) {
+      try {
+        console.log('调用 deleteCustomTemplate，模板ID:', editingTemplate.id);
+        const result = deleteCustomTemplate(editingTemplate.id);
+        console.log('删除结果:', result);
+        console.log('重新获取自定义模板列表');
+        setCustomTemplates(getCustomTemplates());
+        console.log('关闭删除确认对话框');
+        setShowDeleteConfirm(false);
+        console.log('清空编辑模板状态');
+        setEditingTemplate(null);
+        console.log('模板删除完成');
+      } catch (error) {
+        console.error('删除失败:', error);
+        alert('删除失败：' + (error as Error).message);
+      }
+    } else {
+      console.error('没有要删除的模板');
+    }
+  };
+
+  // 创建新模板
+  const handleCreateTemplate = () => {
+    setEditingTemplate({
+      id: '',
+      title: '',
+      description: '',
+      prompt: '',
+      icon: 'FileText',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    setIsEditing(true);
+  };
+
+  // 导出模板
+  const handleExportTemplates = () => {
+    const data = exportTemplates();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ideanote-templates-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // 导入模板
+  const handleImportTemplates = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const count = importTemplates(content);
+        setCustomTemplates(getCustomTemplates());
+        alert(`成功导入 ${count} 个模板`);
+      } catch (error) {
+        alert('导入失败：' + (error as Error).message);
+      }
+    };
+    reader.readAsText(file);
+    
+    // 清空文件输入
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+
+
   // Filter templates based on search query
-  const filteredTemplates = templateItems.filter(template =>
-    template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTemplates = templateItems.filter(
+    (template) =>
+      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 dark:bg-black/50 backdrop-blur-xl animate-in fade-in-0 duration-300">
-      <div 
-        ref={modalRef}
-        className="bg-white/90 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 border border-white/20 dark:border-gray-700/30 overflow-hidden backdrop-blur-2xl animate-in zoom-in-95 duration-300"
-        style={{
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
-        }}
-      >
-        {/* Header - macOS style */}
-        <div className="px-6 py-4 border-b border-gray-200/30 dark:border-gray-700/30 bg-white/60 dark:bg-gray-800/60 flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-1">
-            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 tracking-wide">选择模板</h3>
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={14} />
+  const filteredCustomTemplates = customTemplates.filter(
+    (template) =>
+      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // 编辑界面
+  if (isEditing && editingTemplate) {
+    return (
+      <div className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-2xl animate-in fade-in-0 duration-500 z-50 flex items-center justify-center">
+        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-500 border border-white/20 dark:border-gray-700/30" ref={modalRef}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-8 border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-gray-50/50 to-white/30 dark:from-gray-900/50 dark:to-gray-800/30">
+            <div>
+              <h2 className="text-2xl font-bold tracking-wide bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {editingTemplate.id ? '编辑模板' : '创建模板'}
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
+                {editingTemplate.id ? '更新您的AI模板' : '创建新的AI模板'}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setEditingTemplate(null);
+              }}
+              className="p-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110 group"
+            >
+              <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-200" />
+            </button>
+          </div>
+
+          {/* Edit Form */}
+          <div className="p-8 space-y-6 overflow-y-auto max-h-[60vh] bg-gradient-to-br from-white/50 to-gray-50/30 dark:from-gray-800/50 dark:to-gray-900/30">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                模板标题 <span className="text-red-500">*</span>
+              </label>
               <Input
                 type="text"
-                placeholder="搜索模板..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-3 py-1.5 text-sm w-full bg-white/50 dark:bg-gray-700/50 border-gray-200/50 dark:border-gray-600/50 rounded-lg"
+                value={editingTemplate.title}
+                onChange={(e) => setEditingTemplate({ ...editingTemplate, title: e.target.value })}
+                className="bg-white/70 dark:bg-gray-900/70 border-gray-200/60 dark:border-gray-700/60 rounded-2xl px-4 py-3 text-lg transition-all duration-200 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500/50"
+                placeholder="为您的模板起个响亮的名字..."
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                模板描述 <span className="text-red-500">*</span>
+              </label>
+              <Input
+                type="text"
+                value={editingTemplate.description}
+                onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
+                className="bg-white/70 dark:bg-gray-900/70 border-gray-200/60 dark:border-gray-700/60 rounded-2xl px-4 py-3 transition-all duration-200 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500/50"
+                placeholder="简要描述这个模板的用途..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                提示词内容 <span className="text-red-500">*</span>
+                <span className="text-xs font-normal text-gray-500 ml-2">支持多行文本，Markdown格式</span>
+              </label>
+              <Textarea
+                value={editingTemplate.prompt}
+                onChange={(e) => setEditingTemplate({ ...editingTemplate, prompt: e.target.value })}
+                className="bg-white/70 dark:bg-gray-900/70 border-gray-200/60 dark:border-gray-700/60 rounded-2xl p-4 min-h-[250px] text-sm leading-relaxed transition-all duration-200 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500/50 resize-y"
+                placeholder="在这里输入您的AI提示词内容...\n\n例如：\n- 角色设定\n- 任务要求\n- 输出格式\n- 注意事项"
+              />
+            </div>
+
+
           </div>
-          <button
-            onClick={onClose}
-            className="h-6 w-6 flex items-center justify-center rounded-full bg-gray-200/50 hover:bg-gray-300/70 dark:bg-gray-600/50 dark:hover:bg-gray-500/70 transition-all duration-150 group"
-            aria-label="关闭"
-          >
-            <X size={12} className="text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" />
-          </button>
+
+          {/* Footer */}
+          <div className="p-8 border-t border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-gray-50/50 to-white/30 dark:from-gray-900/50 dark:to-gray-800/30">
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditingTemplate(null);
+                }}
+                className="border-gray-200/60 dark:border-gray-700/60 px-6 py-2 rounded-2xl hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-all duration-200"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleSaveTemplate}
+                className="  px-4 py-2 rounded-lg transition-colors"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                保存模板
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden" ref={modalRef}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              AI 模板库
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">选择合适的模板开始创作</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCreateTemplate}
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExportTemplates}
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="w-4 h-4" />
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportTemplates}
+              className="hidden"
+            />
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
         </div>
 
-        {/* Template Grid - macOS style */}
-        <ScrollArea className="h-[480px]">
-          <div className="p-5">
-            {filteredTemplates.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-sm text-gray-500 dark:text-gray-400">未找到匹配的模板</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {filteredTemplates.map((template, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "group cursor-pointer transition-all duration-300 ease-out rounded-xl",
-                      "bg-white/40 dark:bg-gray-700/30 border border-white/50 dark:border-gray-600/30",
-                      "hover:bg-white/70 dark:hover:bg-gray-600/50 hover:shadow-xl hover:scale-[1.02]",
-                      "backdrop-blur-sm hover:backdrop-blur-md"
-                    )}
-                    onClick={() => handleTemplateSelect(template)}
-                    style={{
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                      transform: 'translateZ(0)'
-                    }}
-                  >
-                    <div className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300 ease-out",
-                          "bg-gradient-to-br from-blue-100/90 to-blue-200/70 dark:from-blue-900/40 dark:to-blue-800/30",
-                          "text-blue-600 dark:text-blue-400 shadow-sm",
-                          "group-hover:scale-110 group-hover:shadow-md group-hover:from-blue-200/90 group-hover:to-blue-300/80",
-                          "dark:group-hover:from-blue-800/50 dark:group-hover:to-blue-700/40"
-                        )}>
-                          <div className="transition-transform duration-300 group-hover:scale-110">
-                            {template.icon}
+        {/* Search Bar */}
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="搜索模板..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 w-full border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Template Grid */}
+        <div className="p-6 overflow-y-auto max-h-[50vh]">
+          <ScrollArea className="h-full">
+            {/* 内置模板 */}
+            {filteredTemplates.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">内置模板</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {filteredTemplates.map((template, index) => (
+                    <Card
+                      key={index}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 border-gray-200 dark:border-gray-700"
+                      onClick={() => handleTemplateSelect(template)}
+                    >
+                      <CardHeader className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {template.title}
+                              </CardTitle>
+                              <CardDescription className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                                {template.description}
+                              </CardDescription>
+                            </div>
                           </div>
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 text-xs">
+                            内置
+                          </Badge>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-tight tracking-wide">
-                            {template.title}
-                          </h4>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed opacity-90 group-hover:opacity-100 transition-opacity duration-300">
-                            {template.description}
-                          </p>
-                          <div className="mt-2">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-50/90 to-indigo-50/90 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-700/40 shadow-sm">
-                              AI 增强
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
-        </ScrollArea>
 
-        {/* Footer - macOS style */}
-        <div className="px-6 py-3 bg-white/40 dark:bg-gray-800/40 border-t border-gray-200/20 dark:border-gray-700/20">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center opacity-80">
-            选择模板后，AI 将根据您的内容生成相应的文案
+            {/* 自定义模板 */}
+            {filteredCustomTemplates.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">自定义模板</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {filteredCustomTemplates.map((template) => (
+                    <Card
+                      key={template.id}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 border-gray-200 dark:border-gray-700"
+                    >
+                      <CardHeader className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3 flex-1" onClick={() => handleTemplateSelect(template)}>
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {template.title}
+                              </CardTitle>
+                              <CardDescription className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                                {template.description}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 ml-4">
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs">
+                              自定义
+                            </Badge>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditTemplate(template);
+                                }}
+                                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                title="编辑模板"
+                              >
+                                <Edit3 className="w-3 h-3 text-gray-500" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTemplate(template.id);
+                                }}
+                                className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                title="删除模板"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredTemplates.length === 0 && filteredCustomTemplates.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">没有找到匹配的模板</p>
+                <Button
+                  variant="outline"
+                  onClick={handleCreateTemplate}
+                  className="mt-4 border-gray-200/50 dark:border-gray-700/50"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  创建新模板
+                </Button>
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/50">
+          <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
+            💡 使用 AI 模板让您的创作更加高效 • 点击模板直接应用，点击编辑按钮管理自定义模板
           </p>
         </div>
+
+        {/* Delete Confirmation Alert */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center mb-4">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mr-3" />
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">确认删除</h3>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                您确定要删除这个自定义模板吗？此操作无法撤销。
+              </p>
+              <div className="flex justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  size="sm"
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={confirmDeleteTemplate}
+                  variant="destructive"
+                  size="sm"
+                >
+                  删除
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
