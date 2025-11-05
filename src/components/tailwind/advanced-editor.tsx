@@ -34,7 +34,8 @@ import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
 import { Copy } from "@/types/Model";
 // import { AudioSelector } from "./selectors/audio-selector";
-import { Save, FileText, Presentation, Share2, Sparkles,Download } from "lucide-react";
+import { Save, FileText, Presentation, Share2, Sparkles,Download, Wand2 } from "lucide-react";
+import TemplateSelector from "./template-selector";
 
 import hljs from 'highlight.js';
 
@@ -117,12 +118,14 @@ const TailwindAdvancedEditor = ({
   const [saveStatus, setSaveStatus] = useState("unSaved");
   const [charsCount, setCharsCount] = useState<number>(0);
   const [editorInstance, setEditorInstance] = useState<EditorInstance | null>(null); // 新增状态
+  const [editorReady, setEditorReady] = useState(false); // 编辑器是否准备就绪
 
   const [openNode, setOpenNode] = useState(false);
   const [openColor, setOpenColor] = useState(false);
   const [openLink, setOpenLink] = useState(false);
   const [openAI, setOpenAI] = useState(false);
   const [openAudio,setOpenAudio] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
   // 创建综合的拖拽处理函数，支持图片、视频、音频
   const handleMultiMediaDrop = (view: any, event: DragEvent, moved: boolean, uploadFn: any) => {
@@ -425,8 +428,37 @@ const TailwindAdvancedEditor = ({
             {charsCount} Words
           </Badge>
         )}
+  <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => {
+            if (!editorReady) {
+              alert('编辑器正在初始化，请稍后再试...');
+              return;
+            }
+            if (!editorInstance && !window.editorInstance) {
+              alert('编辑器实例未准备好，请稍后再试...');
+              return;
+            }
+            setShowTemplateSelector(true);
+          }}
+          className={cn(
+            "px-3 py-2 text-sm font-medium backdrop-blur-sm transition-all duration-200",
+            "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50",
+            "border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300",
+            "hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/70 dark:hover:to-pink-900/70",
+            "hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-lg hover:shadow-purple-200/25 dark:hover:shadow-purple-900/25",
+            "hover:scale-105 active:scale-95"
+          )}
+        >
+          <Wand2 className="w-4 h-4 mr-1.5" />
+          <span className="font-semibold">模板</span>
+        </Button>
+
       </div>
       
+
+
       {/* 操作按钮组 */}
       <div className="flex absolute right-8 top-8 z-10 gap-2">
         {showExportMD && (
@@ -544,11 +576,15 @@ const TailwindAdvancedEditor = ({
                 "ProseMirror prose dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full prose-blue dark:prose-blue",
             },
           }}
-          onUpdate={({ editor }) => {
-            debouncedUpdates(editor);
+          onCreate={({ editor }) => {
             setEditorInstance(editor);
             // @ts-ignore
             window.editorInstance = editor;
+            setEditorReady(true);
+            console.log('Editor created and ready');
+          }}
+          onUpdate={({ editor }) => {
+            debouncedUpdates(editor);
           }}
           slotAfter={<ImageResizer />}
         >
@@ -607,6 +643,14 @@ const TailwindAdvancedEditor = ({
           </GenerativeMenuSwitch>
         </EditorContent>
       </EditorRoot>
+
+      {/* 模板选择器 */}
+      {showTemplateSelector && (
+        <TemplateSelector 
+          editor={editorInstance} 
+          onClose={() => setShowTemplateSelector(false)} 
+        />
+      )}
     </div>
   );
 };

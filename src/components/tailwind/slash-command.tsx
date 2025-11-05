@@ -128,20 +128,21 @@ const createInputModal = (title: string, placeholder: string = ''): Promise<stri
 };
 
 // 新增公共方法 - 优化为macOS风格（透明背景）
-const createAIModal = (editor: any, prompt: string,range:Range) => {
+export const createAIModal = (editor: any, prompt: string,range:Range) => {
   editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
-  // 创建弹出框 - macOS风格透明背景
+  // 创建弹出框 - macOS风格半透明背景
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-20 backdrop-blur-md';
+  modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 dark:bg-black/50 backdrop-blur-xl';
   
   const modalContent = document.createElement('div');
-  modalContent.className = 'bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-2xl w-full max-w-3xl mx-4 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden flex flex-col backdrop-blur-xl';
+  modalContent.className = 'bg-white/90 dark:bg-gray-800/95 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 border border-white/20 dark:border-gray-700/30 overflow-hidden flex flex-col backdrop-blur-2xl animate-in zoom-in-95 duration-300';
+  modalContent.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05) inset';
   modal.appendChild(modalContent);
 
   // 标题区域 - macOS风格
   const titleContainer = document.createElement('div');
-  titleContainer.className = 'px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50 bg-gray-50/80 dark:bg-gray-750/80';
-  titleContainer.innerHTML = '<h3 class="text-base font-medium text-gray-900 dark:text-gray-100">AI 内容生成</h3>';
+  titleContainer.className = 'px-6 py-4 border-b border-gray-200/30 dark:border-gray-700/30 bg-white/60 dark:bg-gray-800/60';
+  titleContainer.innerHTML = '<h3 class="text-base font-medium text-gray-900 dark:text-gray-100 tracking-wide">AI 内容生成</h3>';
   modalContent.appendChild(titleContainer);
 
   // 创建内容显示区域 - 添加高度限制和滚动
@@ -160,18 +161,18 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
   `;
   contentDiv.appendChild(loadingDiv);
 
-  // 创建操作按钮 - macOS风格（更透明）
+  // 创建操作按钮 - macOS风格
   const buttonContainer = document.createElement('div');
-  buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-gray-50/60 dark:bg-gray-750/60 border-t border-gray-200/40 dark:border-gray-700/40';
+  buttonContainer.className = 'flex justify-end gap-3 px-6 py-4 bg-white/40 dark:bg-gray-800/40 border-t border-gray-200/20 dark:border-gray-700/20';
   
-  // 取消按钮 - macOS风格（透明按钮）
+  // 取消按钮 - macOS风格
   const cancelButton = document.createElement('button');
-  cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-700/50 border border-gray-300/40 dark:border-gray-600/40 rounded-md hover:bg-white/70 dark:hover:bg-gray-700/70 focus:outline-none focus:ring-1 focus:ring-gray-400 backdrop-blur-sm';
+  cancelButton.className = 'px-4 py-2 text-sm font-normal text-gray-700 dark:text-gray-300 bg-white/60 dark:bg-gray-700/50 border border-gray-300/50 dark:border-gray-600/40 rounded-lg hover:bg-white/80 dark:hover:bg-gray-700/70 focus:outline-none focus:ring-1 focus:ring-gray-400 backdrop-blur-sm transition-all duration-200';
   cancelButton.textContent = '取消';
 
-  // 确认按钮 - macOS风格（透明蓝色主按钮）
+  // 确认按钮 - macOS风格
   const confirmButton = document.createElement('button');
-  confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-blue-600/80 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 backdrop-blur-sm';
+  confirmButton.className = 'px-4 py-2 text-sm font-normal text-white bg-gradient-to-r from-blue-600/90 to-blue-500/90 rounded-lg hover:from-blue-600 hover:to-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 backdrop-blur-sm transition-all duration-200 shadow-sm';
   confirmButton.textContent = '确认';
 
   buttonContainer.appendChild(cancelButton);
@@ -297,12 +298,14 @@ const createAIModal = (editor: any, prompt: string,range:Range) => {
 
   // 确认按钮点击事件
   confirmButton.onclick = () => {
-    const selection = editor.view.state.selection;
+    // 获取文档末尾位置
+    const docSize = editor.state.doc.content.size;
+    // 在文档末尾插入，并确保在新行开始
     editor
       .chain()
       .focus()
       .deleteRange(range)
-      .insertContentAt(selection.to + 1, contentDiv.innerHTML)
+      .insertContentAt(docSize, "\n" + contentDiv.innerHTML)
       .run();
     document.body.removeChild(modal);
   };
@@ -680,7 +683,7 @@ export const suggestionItems = createSuggestionItems([
     icon: <Sparkles size={18} />,
     command: ({ editor, range }) => {
       const text = editor.getText();
-      const prompt = `你是一位擅长撰写爆款短视频脚本的写作助力，能够根据已有文本创作吸引目标用户留存的论文。
+      const prompt = `你是一位擅长撰写精简简洁爆款短视频脚本的写作助力，能够根据已有文本创作吸引目标用户留存的论文。
 
       给出3个爆款标题：
       - 使用悬念、反差性提问、数字和数据吸引注意力。
@@ -794,170 +797,41 @@ export const suggestionItems = createSuggestionItems([
     },
   },
     {
-    title: "野兽先生 YouTube 文案创作提示词",
-    description: "根据已有内容生成专业的视频文案",
+    title: "何同学风格文案",
+    description: "学习何同学的文案风格：接地气+比喻+故事",
     icon: <Users size={18} />,
     command: ({ editor, range }) => {
       const text = editor.getText();
       const prompt = `
-要求：根据已有的文本内容，创作一个专业的 YouTube 视频脚本文案。使用大白话，专注于原先文案内容，不要偏离。
-
-叙事结构模板设计
-
-开场钩子设计
-
-前 3 秒必须出现视觉冲击画面（如意外事件 / 数据对比 / 反向提问），同时叠加画外音："你以为 [常识认知]？但 90% 的人都错了！"。示例：展示 "月入 3 千存钱" 画面，配 "靠工资永远存不下 100 万？今天这个方法让我 3 年存到了"。
-
-问题提出框架
-
-第 5-8 秒用具体场景引发共鸣，格式为 "[目标人群] 每天都在 [痛点行为]，却不知道 [隐藏损失] 正在发生"。需包含 1 个可量化数据（如 "每天浪费 8小时"）和 1 个情感触发词（如 "焦虑 / 后悔 / 无奈"）。
-
-解决方案呈现
-
-15 秒处必须给出 "伪解决方案"，20 秒处用 "但是" 转折揭示真实方法。结构示例：" 很多人推荐 [流行方法]，但是他们忽略了 [关键变量]—— 真正有效的是 [反常识策略]"，需同步展示对比数据图表。
-
-转折节点设计
-
-在视频 30 秒、60 秒、90 秒三个时间点设置强制转折：
-
-30 秒："你以为这就完了？真正的关键藏在 [细节处]"
-
-60 秒：" 按照这个步骤操作，因此会产生 [意外结果]"
-
-90 秒："当所有人都在 [常规行动] 时，高手已经用 [逆向思维] 做到了 [惊人成果]"
-
-"但是 / 因此" 转折词使用场景及示例
-
-认知颠覆型转折
-
-使用场景：当观众形成初步判断时，用 "但是" 揭示底层逻辑。
-
-示例：展示 "每天喝 8 杯水" 养生画面→"但是哈佛医学院最新研究证实，过量饮水会导致水中毒 —— 真正的补水公式是体重（kg）×35ml"（需标注研究发布日期）。
-
-结果反转型转折
-
-使用场景：在给出常规解决方案后，用 "因此" 引出连锁反应。
-
-示例：演示 "每天存 50 元" 计算→" 坚持 30 天后，因此你的消费习惯会发生质变 —— 这就是行为心理学中的 ' 最小改变法则 '"（同步弹出行为心理学研究论文截图）。
-
-方法升级型转折
-
-使用场景：在观众接受基础方案时，用 "但是" 推出进阶策略。
-
-示例：讲解 "番茄工作法" 操作→" 但是效率专家发现，25 分钟专注后插入 3 分钟高强度运动，因此大脑活跃度提升 40%（引用《自然》杂志神经科学研究）"。
-
-结尾反转创意方向（附数据验证模式）
-
-数据颠覆式反转
-
-模式：给出与开篇完全相反的数据结论，配合惊讶表情特写。
-
-示例：开场 "存钱需要克制消费"→结尾 "因此我鼓励每月挥霍 1 次 —— 这种 ' 目标奖励机制 ' 让我的储蓄率反而提升了 27%"（展示银行流水对比图）。
-
-留存数据：采用该模式的视频在结尾前 5 秒跳出率降低 41%（来源：野兽先生 2024 年 Q3 视频数据报告）。
-
-行动召唤反转
-
-模式：以 "现在立即行动" 引导后突然停顿，揭示 "真正的第一步"。
-
-示例：" 马上打开你的手机备忘录，但是不要写待办清单 —— 先删除所有 APP，这才是提升效率的关键 "（展示手机屏幕操作过程）。
-
-留存数据：命令式反转结尾比普通结尾完播率高 29%。
-
-身份认同反转
-
-模式：从 "专家视角" 切换为 "同路人视角"，降低距离感。
-
-示例：全程西装革履讲解理财→结尾脱外套露出 T 恤 " 说实话，3 年前我也是月光族，因此这些方法都是摔过跟头才总结的 "（背景切换为出租屋场景）。
-
-适用领域：个人成长类视频，用户评论互动率提升 63%。
-
-未来悬念反转
-
-模式：在给出完整方案后，抛出 "但这只是开始" 的长期规划。
-
-示例：演示完 "3 个月减脂计划"→结尾 " 当你完成这个周期，因此会面临肌肉流失的新问题 —— 关注我，下期揭秘增肌减脂同步进行的秘诀 "（弹出下期预告封面）。
-
-数据效果：该模式观众追更率提升 58%，适合系列化内容。
-
-公益升华反转
-
-模式：从个人利益上升到社会价值，触发情感共鸣。
-
-示例：讲解 "二手物品变现" 全流程→结尾 " 我把所有收益都捐给了流浪动物救助站，因此每学会一个技巧，就有 10 只小动物能吃饱饭 "（展示捐款记录和动物照片）。
-
-平台偏好：YouTube 算法对公益相关内容推荐权重提升 35%。
-
-视频留存率优化数据锚点
-
-前 3 秒关键指标
-
-视觉指标：画面亮度需比同类视频高 20%，必须出现 3 种以上颜色对比
-
-音频指标：画外音语速保持每分钟 180-200 字，首句末尾音调提高 2 个音阶
-
-数据标准：完播率基准值 45%，低于 38% 立即调整开场画面
-
-15 秒留存锚点
-
-必须出现 "你" 字至少 3 次，形成对话感
-
-展示 1 个具体数字（如 "3 个步骤"" 节省 50% 成本 "）
-
-数据警示线：15 秒跳出率＞55% 时，需在第 10 秒插入 "接下来的内容可能会颠覆你的认知"
-
-30 秒互动设计
-
-强制观众做 "思维动作"："现在暂停视频，在评论区打出你的 [目标数字]"
-
-画面出现倒计时动画（如 "3 秒后揭晓答案"）
-
-留存目标：30 秒时观众留存率需≥初始人数的 65%
-
-60 秒信息密度控制
-
-每 15 秒必须出现 1 个新数据 / 案例 / 金句
-
-文字卡片停留时间严格控制在 2.3 秒（±0.2 秒）
-
-节奏标准：60 秒内完成 "问题 - 原因 - 案例 - 结论" 完整闭环
-
-90 秒情绪峰值设计
-
-此处音量需突然提高 10%，配合画面放大特效
-
-抛出 "反常识金句"，格式为 "真正的 [领域关键词] 不是 [常识]，而是 [逆向观点]"
-
-数据验证：该节点观众心率需比基线提升 25%（可通过弹幕速度监测）
-
-结尾前 5 秒行动指令
-
-必须包含 "点击头像"" 订阅 ""开启通知" 三个明确指引
-
-语速降至每分钟 150 字，关键动词加重读音（如 "立即点击 ""务必订阅 "）
-
-按钮设计：订阅按钮需闪烁 3 次，位置固定在画面右下角
-
-整体时长控制
-
-知识类视频严格控制在 2 分 30 秒 ±5 秒
-
-案例类视频不超过 3 分钟，每增加 30 秒需多设置 1 个转折
-
-数据模型：视频完播率与时长呈反比（R=-0.78），超过 4 分钟后完播率跌破 20%
-
-使用执行说明
-
-所有脚本生成后需通过以下 3 步验证：
-
-检查 "但是 / 因此" 是否各出现 3 次以上
-
-在时间轴对应位置标注数据锚点达标情况
-
-结尾反转方案需从 5 个创意方向中明确勾选 1 个并标注预期留存率
-
-生成的脚本需直接输出可拍摄的分镜脚本格式，包含 "时间点 | 画面内容 | 画外音 | 文字卡片 | 数据来源" 五列信息`
- + text;
+你现在是B站UP主"老师好我叫何同学"，擅长用生活化的语言和生动的比喻把复杂的技术概念讲清楚。请根据已有内容，创作一段何同学风格的文案。
+
+何同学文案特点：
+1. 接地气：把专业术语翻译成大白话，让普通人能听懂
+2. 善用比喻：用生活中熟悉的东西来解释抽象概念
+3. 讲故事：不直接讲道理，而是分享自己的真实经历
+4. 有温度：文案里有情感，能引起共鸣
+
+写作要求：
+- 用第一人称"我"来讲故事
+- 多用人称代词"你""我们"，像跟朋友聊天
+- 不要编造数据和研究报告
+- 用生活化的比喻，比如把网络比作空气，把数据比作水流
+- 文案要有起承转合，像讲一个小故事
+- 结尾要有情感升华，让人印象深刻
+
+结构参考：
+开头：从个人经历或日常场景切入
+发展：遇到什么问题，怎么解决的
+高潮：用比喻解释核心概念
+结尾：回到个人感受，引发共鸣
+
+示例风格：
+"那天我真的好开心啊，好像我的整个世界，都可以放进这块屏幕里"
+"网络应该像空气一样，24小时给我们提供生命中最重要的资源，但我们甚至意识不到它的存在"
+"从前我的世界是纯黑色的，直到大家让这里闪起了点点星光"
+
+已有内容如下：
+` + text;
 
       createAIModal(editor, prompt,range);
     },
