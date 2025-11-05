@@ -199,11 +199,20 @@ const TailwindAdvancedEditor = ({
   //Apply Codeblock Highlighting on the HTML from editor.getHTML()
   const highlightCodeblocks = (content: string) => {
     const doc = new DOMParser().parseFromString(content, 'text/html');
+    
+    // codeBlockLowlight扩展会自动处理语法高亮
+    // 这里只需要确保样式正确应用
     doc.querySelectorAll('pre code').forEach((el) => {
-      // @ts-ignore
-      // https://highlightjs.readthedocs.io/en/latest/api.html?highlight=highlightElement#highlightelement
-      hljs.highlightElement(el);
+      try {
+        // 如果元素还没有hljs类，手动添加（通常codeBlockLowlight已经处理了）
+        if (!el.classList.contains('hljs')) {
+          el.classList.add('hljs');
+        }
+      } catch (error) {
+        console.warn('代码高亮样式应用失败:', error);
+      }
     });
+    
     return new XMLSerializer().serializeToString(doc);
   };
 

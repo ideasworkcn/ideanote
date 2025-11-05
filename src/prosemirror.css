@@ -166,10 +166,11 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
 
 
 
-/* Novel-style code blocks - 优化为平板舒适的代码阅读体验 */
+/* Novel-style code blocks - 已由 highlight.js 处理，删除冲突样式 */
 pre {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 1px solid #e2e8f0;
+  background: #1f2937;
+  color: #f8fafc;
+  /* border: 1px solid #e2e8f0; */
   border-radius: 12px;
   padding: 1.5rem;
   margin: 1.5rem 0;
@@ -181,40 +182,7 @@ pre {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   transition: all 0.3s ease;
 }
-
-pre:hover {
-  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.08), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
-  transform: translateY(-1px);
-}
-
-pre code {
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-  color: #1e293b; /* 深色字体，提高可读性 */
-  font-family: inherit;
-  font-weight: 600; /* 增加字体粗细 */
-}
-
-/* Inline code styling - 优化为平板舒适的内联代码阅读 */
-:not(pre) > code {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  color: #0c4a6e;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.9375em; /* 15px - 与代码块保持一致 */
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  border: 1px solid #bae6fd;
-  font-weight: 600;
-  box-shadow: 0 1px 2px 0 rgba(2, 132, 199, 0.1);
-  transition: all 0.2s ease;
-}
-
-:not(pre) > code:hover {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  box-shadow: 0 2px 4px 0 rgba(2, 132, 199, 0.15);
-  transform: translateY(-1px);
-}
+/* 代码样式已由 highlight.js 处理，删除冲突样式 */
 
 
 
@@ -491,58 +459,7 @@ pre code {
 
 
 
-pre {
-  opacity: 0.8 !important; /* 提高可见度 */
-  border-radius: 0.75rem;
-  color: #e2e8f0;
-  font-family: "JetBrainsMono", monospace;
-  padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-  border: 1px solid #334155;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
-
-  code {
-    background: none;
-    color: inherit;
-    font-size: 0.85rem;
-    padding: 0;
-    line-height: 1.6;
-  }
-  .hljs-quote {
-    color: #94a3b8;
-    font-style: italic;
-  }
-
-  .hljs-variable,
-  .hljs-template-variable,
-  .hljs-attribute,
-  .hljs-tag,
-  .hljs-name,
-  .hljs-regexp,
-  .hljs-link,
-  .hljs-name,
-  .hljs-selector-id,
-  .hljs-selector-class {
-    color: #f87171;
-    font-weight: 500;
-  }
-
-  .hljs-keyword,
-  .hljs-selector-tag {
-    color: #38bdf8;
-    font-weight: 600;
-  }
-
-  .hljs-emphasis {
-    font-style: italic;
-    color: #cbd5e1;
-  }
-
-  .hljs-strong {
-    font-weight: 700;
-    color: #f1f5f9;
-  }
-}
+/* 全局 pre 样式已由 highlight.js 处理，删除冲突样式 */
 
 
 
@@ -722,52 +639,7 @@ body {
   margin: 0;
 }
 
-/* 代码块样式 - 优化为平板舒适的代码阅读体验 */
-.ProseMirror code {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  color: #0c4a6e;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-family: 'JetBrainsMono', monospace;
-  font-size: 0.9375rem; /* 15px - 平板代码最佳大小 */
-  border: 1px solid #bae6fd;
-  font-weight: 600;
-  box-shadow: 0 1px 2px 0 rgba(2, 132, 199, 0.1);
-  transition: all 0.2s ease;
-}
-
-.ProseMirror code:hover {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  box-shadow: 0 2px 4px 0 rgba(2, 132, 199, 0.15);
-  transform: translateY(-1px);
-}
-
-.ProseMirror pre {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  color: #e2e8f0;
-  font-family: 'JetBrainsMono', monospace;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
-  overflow-x: auto;
-  line-height: 1.7;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s ease;
-}
-
-.ProseMirror pre:hover {
-  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.08), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
-  transform: translateY(-1px);
-}
-
-.ProseMirror pre code {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  color: #e2e8f0; /* 修复：确保代码字体为深色 */
-  font-weight: 600; /* 增加字体粗细提高可读性 */
-}
+/* 代码块样式已由 highlight.js 处理，删除冲突样式 */
 
 /* 链接样式 */
 .ProseMirror a {

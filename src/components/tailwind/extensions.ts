@@ -194,8 +194,7 @@ export const defaultExtensions = [
   taskItem,
   horizontalRule,
   aiHighlight,
-  // codeBlockLowlight与starterKit中的codeBlock冲突，移除以避免重复
-  // codeBlockLowlight,
+  codeBlockLowlight,
   youtube,
   twitter,
   mathematics,
