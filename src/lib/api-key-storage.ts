@@ -1,6 +1,6 @@
 // API Key 存储管理
 export class ApiKeyStorage {
-  private static readonly STORAGE_KEY = 'deepseek_api_key';
+  private static readonly STORAGE_KEY_PREFIX = 'api_key_';
 
   // 简单的Base64编码（仅用于混淆，不是真正的加密）
   private static encode(text: string): string {
@@ -15,13 +15,14 @@ export class ApiKeyStorage {
     }
   }
 
-  static async setApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {
+  static async setApiKey(apiKey: string, model: string = 'deepseek'): Promise<{ success: boolean; error?: string }> {
     try {
+      const storageKey = this.STORAGE_KEY_PREFIX + model;
       if (apiKey.trim() === '') {
-        localStorage.removeItem(this.STORAGE_KEY);
+        localStorage.removeItem(storageKey);
       } else {
         const encoded = this.encode(apiKey);
-        localStorage.setItem(this.STORAGE_KEY, encoded);
+        localStorage.setItem(storageKey, encoded);
       }
       return { success: true };
     } catch (error) {
@@ -29,9 +30,10 @@ export class ApiKeyStorage {
     }
   }
 
-  static async getApiKey(): Promise<{ success: boolean; apiKey?: string; error?: string }> {
+  static async getApiKey(model: string = 'deepseek'): Promise<{ success: boolean; apiKey?: string; error?: string }> {
     try {
-      const encoded = localStorage.getItem(this.STORAGE_KEY);
+      const storageKey = this.STORAGE_KEY_PREFIX + model;
+      const encoded = localStorage.getItem(storageKey);
       if (!encoded) {
         return { success: true, apiKey: '' };
       }
@@ -42,12 +44,12 @@ export class ApiKeyStorage {
     }
   }
 
-  static async hasApiKey(): Promise<boolean> {
-    const result = await this.getApiKey();
+  static async hasApiKey(model: string = 'deepseek'): Promise<boolean> {
+    const result = await this.getApiKey(model);
     return result.success && !!result.apiKey;
   }
 
-  static async clearApiKey(): Promise<{ success: boolean; error?: string }> {
-    return this.setApiKey('');
+  static async clearApiKey(model: string = 'deepseek'): Promise<{ success: boolean; error?: string }> {
+    return this.setApiKey('', model);
   }
 }

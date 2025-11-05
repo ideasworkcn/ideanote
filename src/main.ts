@@ -652,20 +652,27 @@ ipcMain.handle('fs:selectMediaFile', async (_event, mediaType: 'video' | 'audio'
 });
 
 // API Key 安全存储管理
-ipcMain.handle('settings:getApiKey', async () => {
+ipcMain.handle('settings:getApiKey', async (_event, model: string = 'deepseek') => {
   try {
     const configPath = path.join(app.getPath('userData'), 'config.json');
     const config = readJsonSafe(configPath);
     
-    if (config && config.encryptedApiKey) {
-      // 解密存储的 API Key
+    // 兼容旧版本：如果没有指定model参数，使用默认的encryptedApiKey
+    if (!model && config && config.encryptedApiKey) {
       const decrypted = safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
+      return { success: true, apiKey: decrypted };
+    }
+    
+    // 新逻辑：支持模型特定的API Key
+    const storageKey = `encryptedApiKey_${model}`;
+    if (config && config[storageKey]) {
+      const decrypted = safeStorage.decryptString(Buffer.from(config[storageKey], 'base64'));
       return { success: true, apiKey: decrypted };
     }
     
     return { success: true, apiKey: '' };
   } catch (err) {
-    console.error('Error getting API key:', err);
+    console.error(`Error getting API key for model ${model}:`, err);
     return { success: false, error: String(err) };
   }
 });
@@ -688,27 +695,34 @@ ipcMain.handle('fs:openFolder', async (_event, folderPath: string) => {
   }
 });
 
-ipcMain.handle('settings:setApiKey', async (_event, apiKey: string) => {
+ipcMain.handle('settings:setApiKey', async (_event, apiKey: string, model: string = 'deepseek') => {
   try {
     const configPath = path.join(app.getPath('userData'), 'config.json');
+    const config = readJsonSafe(configPath) || {};
     
     if (apiKey.trim() === '') {
-      // 删除 API Key
-      const config = readJsonSafe(configPath) || {};
-      delete config.encryptedApiKey;
+      // 删除模型特定的 API Key
+      const storageKey = `encryptedApiKey_${model}`;
+      delete config[storageKey];
+      
+      // 兼容旧版本：如果删除的是默认模型，也删除旧的encryptedApiKey
+      if (model === 'deepseek') {
+        delete config.encryptedApiKey;
+      }
+      
       writeJsonSafe(configPath, config);
       return { success: true };
     }
     
-    // 加密并存储 API Key
+    // 加密并存储模型特定的 API Key
     const encrypted = safeStorage.encryptString(apiKey);
-    const config = readJsonSafe(configPath) || {};
-    config.encryptedApiKey = encrypted.toString('base64');
+    const storageKey = `encryptedApiKey_${model}`;
+    config[storageKey] = encrypted.toString('base64');
     
     writeJsonSafe(configPath, config);
     return { success: true };
   } catch (err) {
-    console.error('Error setting API key:', err);
+    console.error(`Error setting API key for model ${model}:`, err);
     return { success: false, error: String(err) };
   }
 });
@@ -746,21 +760,30 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
     const configPath = path.join(app.getPath('userData'), 'config.json');
     const config = readJsonSafe(configPath);
     
+    // 获取选择的模型
+    const selectedModel = config?.selectedModel || 'deepseek';
+    
     let apiKey = '';
-    if (config && config.encryptedApiKey) {
+    // 优先使用模型特定的 API Key
+    const storageKey = `encryptedApiKey_${selectedModel}`;
+    if (config && config[storageKey]) {
+      try {
+        apiKey = safeStorage.decryptString(Buffer.from(config[storageKey], 'base64'));
+      } catch (decryptErr) {
+        console.error(`Failed to decrypt API key for model ${selectedModel}:`, decryptErr);
+      }
+    } else if (config && config.encryptedApiKey) {
+      // 兼容旧版本：如果没有模型特定的 key，使用默认的
       try {
         apiKey = safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
       } catch (decryptErr) {
-        console.error('Failed to decrypt API key:', decryptErr);
+        console.error('Failed to decrypt default API key:', decryptErr);
       }
     }
     
     if (!apiKey || apiKey.trim() === '') {
       throw new Error("请先在设置中配置 API Key");
     }
-
-    // 获取选择的模型
-    const selectedModel = config?.selectedModel || 'deepseek';
     
     // 模型配置
     const modelConfig = {
@@ -880,17 +903,22 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
     const configPath = path.join(app.getPath('userData'), 'config.json');
     const config = readJsonSafe(configPath);
     
+    // 获取选择的模型
+    const selectedModel = config?.selectedModel || 'deepseek';
+    
     let apiKey = '';
-    if (config && config.encryptedApiKey) {
+    // 优先使用模型特定的 API Key
+    const storageKey = `encryptedApiKey_${selectedModel}`;
+    if (config && config[storageKey]) {
+      apiKey = safeStorage.decryptString(Buffer.from(config[storageKey], 'base64'));
+    } else if (config && config.encryptedApiKey) {
+      // 兼容旧版本：如果没有模型特定的 key，使用默认的
       apiKey = safeStorage.decryptString(Buffer.from(config.encryptedApiKey, 'base64'));
     }
     
     if (!apiKey) {
       throw new Error("请先在设置中配置 API Key");
     }
-
-    // 获取选择的模型
-    const selectedModel = config?.selectedModel || 'deepseek';
     
     // 模型配置
     const modelConfig = {

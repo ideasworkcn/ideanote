@@ -33,7 +33,7 @@ import { handleMediaDrop, handleMediaPaste } from "./media-upload";
 import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
 import { Copy } from "@/types/Model";
-import { AudioSelector } from "./selectors/audio-selector";
+// import { AudioSelector } from "./selectors/audio-selector";
 import { Save, FileText, Presentation, Share2, Sparkles,Download } from "lucide-react";
 
 import hljs from 'highlight.js';
@@ -603,7 +603,7 @@ const TailwindAdvancedEditor = ({
             <Separator orientation="vertical" className="bg-gradient-to-b from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800" />
             <ColorSelector open={openColor} onOpenChange={setOpenColor} />
             <Separator orientation="vertical" className="bg-gradient-to-b from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800" />
-            <AudioSelector open={openAudio} onOpenChange={setOpenAudio} />
+            {/* <AudioSelector open={openAudio} onOpenChange={setOpenAudio} /> */}
           </GenerativeMenuSwitch>
         </EditorContent>
       </EditorRoot>

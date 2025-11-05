@@ -40,20 +40,43 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
     }
   }, [isOpen]);
 
+  // 当模型切换时，加载对应的 API Key
+  useEffect(() => {
+    if (isOpen) {
+      loadApiKeyForModel(selectedModel);
+    }
+  }, [selectedModel, isOpen]);
+
   const loadApiKey = async () => {
     try {
       setIsLoading(true);
-      const result = await window.electronAPI.settings.getApiKey();
-      if (result.success && result.apiKey) {
-        setApiKey(result.apiKey);
-      }
-      // Load model preference
+      // Load model preference first
       const model = await window.electronAPI.settings.getModel();
       if (model) {
         setSelectedModel(model);
       }
+      // Then load API key for the selected model
+      const result = await window.electronAPI.settings.getApiKey(model || 'deepseek');
+      if (result.success && result.apiKey) {
+        setApiKey(result.apiKey);
+      }
     } catch (error) {
       console.error('Failed to load API key:', error);
+      setMessage({ type: 'error', text: '加载 API Key 失败' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadApiKeyForModel = async (model: string) => {
+    try {
+      setIsLoading(true);
+      const result = await window.electronAPI.settings.getApiKey(model);
+      if (result.success) {
+        setApiKey(result.apiKey || '');
+      }
+    } catch (error) {
+      console.error(`Failed to load API key for model ${model}:`, error);
       setMessage({ type: 'error', text: '加载 API Key 失败' });
     } finally {
       setIsLoading(false);
@@ -65,7 +88,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
       setIsLoading(true);
       setMessage(null);
 
-      const result = await window.electronAPI.settings.setApiKey(apiKey.trim());
+      const result = await window.electronAPI.settings.setApiKey(apiKey.trim(), selectedModel);
       const modelResult = await window.electronAPI.settings.setModel(selectedModel);
       
       if (result.success && modelResult.success) {
@@ -96,7 +119,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
       setMessage(null);
 
       // 先保存 API Key 和模型选择
-      const saveResult = await window.electronAPI.settings.setApiKey(apiKey.trim());
+      const saveResult = await window.electronAPI.settings.setApiKey(apiKey.trim(), selectedModel);
       const modelResult = await window.electronAPI.settings.setModel(selectedModel);
       
       if (!saveResult.success || !modelResult.success) {
@@ -124,7 +147,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ trigger }) => {
       setIsLoading(true);
       setMessage(null);
 
-      const result = await window.electronAPI.settings.setApiKey('');
+      const result = await window.electronAPI.settings.setApiKey('', selectedModel);
       if (result.success) {
         setApiKey('');
         setMessage({ type: 'info', text: 'API Key 已清除' });

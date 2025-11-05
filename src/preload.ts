@@ -34,8 +34,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   // 设置管理功能
   settings: {
-    getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
-    setApiKey: (apiKey: string) => ipcRenderer.invoke('settings:setApiKey', apiKey),
+    getApiKey: (model?: string) => ipcRenderer.invoke('settings:getApiKey', model),
+    setApiKey: (apiKey: string, model?: string) => ipcRenderer.invoke('settings:setApiKey', apiKey, model),
     getModel: () => ipcRenderer.invoke('settings:getModel'),
     setModel: (model: string) => ipcRenderer.invoke('settings:setModel', model),
   },
@@ -107,8 +107,8 @@ declare global {
         generateStream: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;
       };
       settings: {
-        getApiKey: () => Promise<{ success: boolean; apiKey?: string; error?: string }>;
-        setApiKey: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
+        getApiKey: (model?: string) => Promise<{ success: boolean; apiKey?: string; error?: string }>;
+        setApiKey: (apiKey: string, model?: string) => Promise<{ success: boolean; error?: string }>;
         getModel: () => Promise<string | null>;
         setModel: (model: string) => Promise<{ success: boolean; error?: string }>;
       };

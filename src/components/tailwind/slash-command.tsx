@@ -794,13 +794,13 @@ export const suggestionItems = createSuggestionItems([
     },
   },
     {
-    title: "野兽先生 YouTube 视频脚本文案创作提示词",
+    title: "野兽先生 YouTube 文案创作提示词",
     description: "根据已有内容生成专业的视频文案",
     icon: <Users size={18} />,
     command: ({ editor, range }) => {
       const text = editor.getText();
       const prompt = `
-要求：根据已有的文本内容，创作一个专业的 YouTube 视频脚本文案。不要偏离文案主题。
+要求：根据已有的文本内容，创作一个专业的 YouTube 视频脚本文案。使用大白话，专注于原先文案内容，不要偏离。
 
 叙事结构模板设计
 
@@ -950,7 +950,7 @@ export const suggestionItems = createSuggestionItems([
 
 所有脚本生成后需通过以下 3 步验证：
 
-用 "Ctrl+F" 检查 "但是 / 因此" 是否各出现 3 次以上
+检查 "但是 / 因此" 是否各出现 3 次以上
 
 在时间轴对应位置标注数据锚点达标情况
 
