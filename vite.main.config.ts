@@ -10,7 +10,7 @@ module.exports = async () => {
         fileName: () => 'main.js',
       },
       rollupOptions: {
-        external: ['electron', 'node:path', 'node:fs'],
+        external: ['electron', 'node:path', 'node:fs', '@xenova/transformers', '@langchain/textsplitters'],
       },
       // 防止清空整个dist目录
       emptyOutDir: false,

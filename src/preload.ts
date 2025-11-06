@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     indexAll: () => ipcRenderer.invoke('kb:indexAll'),
     updateIndex: (id: string) => ipcRenderer.invoke('kb:updateIndex', id),
     search: (query: string) => ipcRenderer.invoke('kb:search', query),
+    indexVectors: () => ipcRenderer.invoke('kb:indexVectors'),
+    vectorSearch: (query: string, topN: number = 3) => ipcRenderer.invoke('kb:vectorSearch', query, topN),
+    answer: (question: string, topN: number = 3) => ipcRenderer.invoke('kb:answer', question, topN),
   },
   // AI 生成功能
   ai: {
@@ -111,6 +114,9 @@ declare global {
         indexAll: () => Promise<{ success: boolean; count?: number; error?: string }>;
         updateIndex: (id: string) => Promise<{ success: boolean; error?: string }>;
         search: (query: string) => Promise<Array<{ id: string; title?: string; snippet?: string; snippetHtml?: string }>>;
+        indexVectors: () => Promise<{ success: boolean; count?: number; error?: string }>;
+        vectorSearch: (query: string, topN?: number) => Promise<Array<{ id: string; score: number; content: string }>>;
+        answer: (question: string, topN?: number) => Promise<{ success: boolean; context?: string; prompt?: string; results?: Array<{ id: string; score: number; content: string }>; error?: string }>;
       };
       ai: {
         generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;

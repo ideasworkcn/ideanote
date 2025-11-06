@@ -7,6 +7,7 @@ import { buildKBDoc, KBDoc } from './lib/kb/text';
 
 let kbDir: string;
 let kbIndexData: { version: number; docs: KBDoc[] } = { version: 1, docs: [] };
+let kbVectorData: { version: number; items: Array<{ id: string; chunkIndex: number; content: string; vector: number[] }> } = { version: 1, items: [] };
 
 if (started) {
   // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -15,6 +16,15 @@ if (started) {
 
 let workspaceRoot: string;
 let mainWindow: BrowserWindow | null = null;
+
+function broadcast(channel: string, payload: any) {
+  try {
+    const wins = BrowserWindow.getAllWindows();
+    for (const w of wins) {
+      try { w.webContents.send(channel, payload); } catch {}
+    }
+  } catch {}
+}
 
 const readJsonSafe = (filePath: string): any | null => {
   try {
@@ -320,7 +330,9 @@ app.whenReady().then(async () => {
   // 不再自动弹出工作区选择对话框，让欢迎页面处理
   ensureWorkspace(); // 只确保有默认工作区
   initKBIndex();
+  initKBVectorIndex();
   await rebuildKBIndex();
+  // 取消启动时的向量全量重建，改为用户触发或按需重建，以避免启动阻塞
   createWindow();
   registerIpcHandlers();
   // 等待页面加载完成后通知渲染进程工作区路径，以触发数据刷新
@@ -594,6 +606,27 @@ function initKBIndex() {
   }
 }
 
+function initKBVectorIndex() {
+  // 加载向量索引（若存在）
+  try {
+    const vecPath = path.join(kbDir, 'vectors.json');
+    if (fs.existsSync(vecPath)) {
+      const raw = fs.readFileSync(vecPath, 'utf8');
+      const obj = JSON.parse(raw || '{}');
+      if (Array.isArray(obj?.items)) {
+        kbVectorData = { version: 1, items: obj.items };
+      } else {
+        kbVectorData = { version: 1, items: [] };
+      }
+    } else {
+      kbVectorData = { version: 1, items: [] };
+    }
+  } catch (e) {
+    console.warn('Load KB vector index failed:', e);
+    kbVectorData = { version: 1, items: [] };
+  }
+}
+
 async function rebuildKBIndex() {
   try {
     if (!fs.existsSync(workspaceRoot)) return;
@@ -619,6 +652,15 @@ function saveKBIndex() {
   }
 }
 
+function saveKBVectorIndex() {
+  try {
+    const vecPath = path.join(kbDir, 'vectors.json');
+    fs.writeFileSync(vecPath, JSON.stringify({ version: 1, items: kbVectorData.items }, null, 2), 'utf8');
+  } catch (e) {
+    console.error('saveKBVectorIndex failed:', e);
+  }
+}
+
 async function updateKBIndexForId(id: string) {
   try {
     const jsonPath = path.join(workspaceRoot, `${id}.json`);
@@ -634,6 +676,286 @@ async function updateKBIndexForId(id: string) {
     saveKBIndex();
   } catch (e) {
     console.error('updateKBIndexForId failed:', e);
+  }
+}
+
+// ---- 向量索引与搜索 ----
+let embeddingPipeline: any | null = null;
+
+// 通过国内镜像拉取并缓存到本地模型目录
+async function ensureLocalModelFromMirror(localModelDir: string) {
+  try {
+    // 需要的文件列表
+    const files = [
+      {
+        url: 'https://hf-mirror.com/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json',
+        path: path.join(localModelDir, 'tokenizer.json'),
+      },
+      {
+        url: 'https://hf-mirror.com/Xenova/all-MiniLM-L6-v2/resolve/main/config.json',
+        path: path.join(localModelDir, 'config.json'),
+      },
+      {
+        url: 'https://hf-mirror.com/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx',
+        path: path.join(localModelDir, 'onnx', 'model.onnx'),
+      },
+    ];
+
+    // 创建目录
+    try { fs.mkdirSync(localModelDir, { recursive: true }); } catch {}
+    try { fs.mkdirSync(path.join(localModelDir, 'onnx'), { recursive: true }); } catch {}
+
+    // 统计总大小（若支持）
+    let totalAll = 0;
+    let downloadedAll = 0;
+    const sizes: Record<string, number> = {};
+    for (const f of files) {
+      try {
+        const head = await fetch(f.url, { method: 'HEAD' });
+        const len = Number(head.headers.get('content-length') || 0);
+        sizes[f.path] = len || 0;
+        totalAll += fs.existsSync(f.path) ? (len || 0) : (len || 0);
+        if (fs.existsSync(f.path)) downloadedAll += len || 0;
+      } catch {}
+    }
+    broadcast('kb:modelDownload', { type: 'start', totalAll, downloadedAll });
+
+    const download = async (url: string, filePath: string) => {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 60000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+        const reader = (res.body as any).getReader?.();
+        const ws = fs.createWriteStream(filePath);
+        let received = 0;
+        const total = sizes[filePath] || 0;
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              ws.write(Buffer.from(value));
+              received += value.length || 0;
+              downloadedAll += value.length || 0;
+              broadcast('kb:modelDownload', {
+                type: 'progress',
+                file: path.basename(filePath),
+                receivedFile: received,
+                totalFile: total,
+                downloadedAll,
+                totalAll,
+                percentAll: totalAll ? Math.round((downloadedAll / totalAll) * 100) : undefined,
+              });
+            }
+          }
+        } else {
+          const buf = await res.arrayBuffer();
+          ws.write(Buffer.from(buf));
+          received = buf.byteLength || 0;
+          downloadedAll += received;
+          broadcast('kb:modelDownload', {
+            type: 'progress',
+            file: path.basename(filePath),
+            receivedFile: received,
+            totalFile: total,
+            downloadedAll,
+            totalAll,
+            percentAll: totalAll ? Math.round((downloadedAll / totalAll) * 100) : undefined,
+          });
+        }
+        ws.end();
+        return true;
+      } catch (err) {
+        console.warn('下载失败（镜像）', url, err);
+        return false;
+      }
+    };
+
+    let allOK = true;
+    for (const f of files) {
+      if (!fs.existsSync(f.path)) {
+        const ok = await download(f.url, f.path);
+        if (!ok) allOK = false;
+      }
+    }
+    broadcast('kb:modelDownload', { type: 'done', totalAll, downloadedAll });
+    return allOK;
+  } catch (e) {
+    console.warn('ensureLocalModelFromMirror 失败:', e);
+    return false;
+  }
+}
+
+function createLocalEmbeddingPipeline(dim: number = 384) {
+  // 纯本地哈希嵌入：无需网络，适合作为回退方案
+  // 基于简单的 token 哈希桶 + 词频，最后进行 L2 归一化
+  const D = Math.max(16, dim | 0);
+  function hashToken(t: string) {
+    let h = 2166136261 >>> 0; // FNV-like
+    for (let i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i);
+      h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+      h >>>= 0;
+    }
+    return h >>> 0;
+  }
+  function embed(text: string) {
+    const vec = new Array<number>(D).fill(0);
+    const normText = (text || '').toLowerCase();
+    const tokens = normText.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    for (const tok of tokens) {
+      const h = hashToken(tok);
+      const idx = h % D;
+      vec[idx] += 1; // TF 权重，可后续扩展为 TF-IDF
+    }
+    // 归一化
+    let sum = 0;
+    for (let i = 0; i < D; i++) sum += vec[i] * vec[i];
+    const denom = Math.sqrt(sum) || 1;
+    for (let i = 0; i < D; i++) vec[i] = vec[i] / denom;
+    return vec;
+  }
+  return async (input: string, opts?: any) => {
+    const v = embed(input);
+    // 与 transformers.pipeline 输出结构对齐
+    return { data: [v] };
+  };
+}
+
+async function ensureEmbeddingPipeline() {
+  if (embeddingPipeline) return embeddingPipeline;
+  // 优先尝试在线模型（如可用）；设置缓存目录，避免重复下载
+  try {
+    const cacheDir = path.join(app.getPath('userData'), 'hf-cache');
+    const homeDir = path.join(app.getPath('userData'), 'hf-home');
+    try { fs.mkdirSync(cacheDir, { recursive: true }); } catch {}
+    try { fs.mkdirSync(homeDir, { recursive: true }); } catch {}
+    process.env.TRANSFORMERS_CACHE = cacheDir;
+    process.env.HF_HOME = homeDir;
+    // 强制使用国内镜像，避免默认走官方域名
+    process.env.HF_HUB_URL = 'https://hf-mirror.com';
+    process.env.HF_ENDPOINT = process.env.HF_HUB_URL;
+
+    const mod = await import('@xenova/transformers');
+    // 若本地已预下载模型，则优先本地目录，避免网络请求
+    const localModelDir = path.join(app.getPath('userData'), 'models', 'all-MiniLM-L6-v2');
+    // 如缺少文件，尝试从镜像下载到本地目录
+    await ensureLocalModelFromMirror(localModelDir);
+    const modelIdOrPath = fs.existsSync(localModelDir) ? localModelDir : 'Xenova/all-MiniLM-L6-v2';
+    const pipe = await (mod as any).pipeline('feature-extraction', modelIdOrPath);
+    embeddingPipeline = pipe;
+    return embeddingPipeline;
+  } catch (e) {
+    console.error('Failed to initialize embedding pipeline, switching to offline fallback:', e);
+    // 回退到本地哈希嵌入，保证功能可用
+    embeddingPipeline = createLocalEmbeddingPipeline(384);
+    return embeddingPipeline;
+  }
+}
+
+let TextSplitterClass: any | null = null;
+async function ensureTextSplitter() {
+  if (TextSplitterClass) return TextSplitterClass;
+  try {
+    const mod = await import('@langchain/textsplitters');
+    TextSplitterClass = (mod as any).RecursiveCharacterTextSplitter;
+    return TextSplitterClass;
+  } catch (e) {
+    console.error('Failed to load text splitter:', e);
+    throw e;
+  }
+}
+
+async function indexVectorsForId(id: string) {
+  try {
+    const jsonPath = path.join(workspaceRoot, `${id}.json`);
+    if (!fs.existsSync(jsonPath)) return;
+    const raw = fs.readFileSync(jsonPath, 'utf8');
+    let meta: any = {};
+    try { meta = JSON.parse(raw || '{}'); } catch {}
+    const markdownStr = typeof meta.richContent === 'string' ? meta.richContent : '';
+    const Splitter = await ensureTextSplitter();
+    const splitter = new Splitter({ chunkSize: 800, chunkOverlap: 100 });
+    const chunks: Array<string | { pageContent: string }> = await splitter.splitText(markdownStr);
+
+    const pipe = await ensureEmbeddingPipeline();
+
+    // 删除旧向量
+    kbVectorData.items = kbVectorData.items.filter(it => it.id !== id);
+
+    let chunkIndex = 0;
+    for (const chunk of chunks) {
+      const content = typeof chunk === 'string' ? chunk : (chunk?.pageContent || '');
+      if (!content) { chunkIndex++; continue; }
+      try {
+        const out = await pipe(content, { pooling: 'mean', normalize: true });
+        const vec = ensureNumberArray(out?.data?.[0]);
+        kbVectorData.items.push({ id, chunkIndex, content, vector: vec });
+      } catch (e) {
+        console.warn(`Embedding failed for ${id}#${chunkIndex}:`, e);
+      }
+      chunkIndex++;
+    }
+    saveKBVectorIndex();
+  } catch (e) {
+    console.error('indexVectorsForId failed:', e);
+  }
+}
+
+async function rebuildVectorIndex() {
+  try {
+    if (!fs.existsSync(workspaceRoot)) return;
+    const files = fs.readdirSync(workspaceRoot, { withFileTypes: true })
+      .filter(f => f.isFile() && f.name.endsWith('.json'))
+      .map(f => f.name.replace(/\.json$/, ''));
+    kbVectorData.items = [];
+    for (const id of files) {
+      await indexVectorsForId(id);
+    }
+    saveKBVectorIndex();
+  } catch (e) {
+    console.error('rebuildVectorIndex failed:', e);
+  }
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0;
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const ai = a[i], bi = b[i];
+    dot += ai * bi;
+    normA += ai * ai;
+    normB += bi * bi;
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom ? dot / denom : 0;
+}
+
+function ensureNumberArray(iter: any): number[] {
+  try {
+    const arr = Array.from((iter as Iterable<any>) ?? []);
+    return arr.map((x) => (typeof x === 'number' ? x : Number(x)));
+  } catch {
+    return [];
+  }
+}
+
+async function vectorSearch(query: string, topN: number = 3): Promise<Array<{ id: string; score: number; content: string }>> {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  const pipe = await ensureEmbeddingPipeline();
+  try {
+    const out = await pipe(q, { pooling: 'mean', normalize: true });
+    const qvec: number[] = ensureNumberArray(out?.data?.[0]);
+    const scored = kbVectorData.items.map(it => ({ id: it.id, content: it.content, score: cosineSimilarity(qvec, it.vector) }));
+    return scored.sort((a, b) => b.score - a.score).slice(0, topN);
+  } catch (e) {
+    console.error('vectorSearch failed:', e);
+    return [];
   }
 }
 
@@ -715,6 +1037,30 @@ ipcMain.handle('kb:updateIndex', async (_e, id: string) => {
 
 ipcMain.handle('kb:search', async (_e, query: string) => {
   try { return searchKB(query); } catch { return []; }
+});
+
+ipcMain.handle('kb:indexVectors', async () => {
+  try { await rebuildVectorIndex(); return { success: true, count: kbVectorData.items.length }; }
+  catch (e) { return { success: false, error: String(e) }; }
+});
+
+ipcMain.handle('kb:vectorSearch', async (_e, query: string, topN: number = 3) => {
+  try { return await vectorSearch(query, topN); } catch { return []; }
+});
+
+ipcMain.handle('kb:answer', async (_e, question: string, topN: number = 3) => {
+  try {
+    // 首次使用若无向量索引，则自动重建一次，避免每次都为空
+    if (!kbVectorData.items || kbVectorData.items.length === 0) {
+      await rebuildVectorIndex();
+    }
+    const results = await vectorSearch(question, topN);
+    const context = results.map(r => r.content).join('\n');
+    const prompt = `基于以下上下文回答问题：\n${context}\n问题：${question}\n回答：`;
+    return { success: true, context, prompt, results };
+  } catch (e) {
+    return { success: false, error: String(e) };
+  }
 });
 
 
@@ -991,6 +1337,14 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
           "● 结尾预留互动话术接口\n";
         userContent = prompt;
         break;
+      case "qa":
+        // 知识库问答：使用提供的上下文回答问题，避免虚构
+        systemContent = "你是一个严谨的知识库问答助手。\n" +
+          "- 仅根据提供的上下文回答问题；\n" +
+          "- 若上下文没有答案，请明确说明‘根据当前上下文无法回答’；\n" +
+          "- 保持回答简洁，必要时使用项目符号或保持换行；";
+        userContent = prompt;
+        break;
       case "improve":
         systemContent = BASE_ROLE + 
           "根据输入的文稿进行文本润色，要求文本正式，内容精简严肃，抓住用户痛点吸引用户观看，只返回处理后的文稿。";
@@ -1115,11 +1469,13 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
       shorter: { role: "system", content: BASE_ROLE + "根据输入的文稿进行高质量文本摘要，只返回处理后内容。" },
       longer: { role: "system", content: BASE_ROLE + "根据输入的文稿进行文本续写，要求文本正式，内容精简严肃，只返回续写的内容。" },
       fix: { role: "system", content: BASE_ROLE + "润色文案,修复语法和拼写错误，返回需要修改语法和拼写的点，无需返回完整文本\n" },
-      zap: { role: "system", content: BASE_ROLE + "根据输入的文稿和要求进行文本修改在适当的时候使用Markdown格式。" }
+      zap: { role: "system", content: BASE_ROLE + "根据输入的文稿和要求进行文本修改在适当的时候使用Markdown格式。" },
+      qa: { role: "system", content: "你是一个严谨的知识库问答助手。仅根据提供的上下文回答问题；若上下文没有答案，请明确说明；保持回答简洁，必要时使用项目符号或保持换行。" }
     };
 
     const systemMessage = messageMap[option as keyof typeof messageMap] || messageMap.generate;
     const userContent = option === 'zap' ? `对于这段文本：${prompt}。你必须遵守这些要求：${command}` : 
+                       option === 'qa' ? prompt : 
                        option === 'generate' ? prompt : `现有文本是：${prompt}`;
 
     // 使用类似OpenAI SDK的方式调用API
