@@ -3,6 +3,10 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import fs from 'node:fs';
 import { novelcopy } from './lib/copyContent';
+import { buildKBDoc, KBDoc } from './lib/kb/text';
+
+let kbDir: string;
+let kbIndexData: { version: number; docs: KBDoc[] } = { version: 1, docs: [] };
 
 if (started) {
   // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -70,6 +74,9 @@ function ensureWorkspace() {
     workspaceRoot = saved || path.join(app.getPath('userData'), 'workspace');
   }
   fs.mkdirSync(workspaceRoot, { recursive: true });
+  // 知识库目录
+  kbDir = path.join(workspaceRoot, '.kb');
+  fs.mkdirSync(kbDir, { recursive: true });
 }
 
 // 选择或初始化工作区路径，并持久化保存
@@ -312,6 +319,8 @@ function registerIpcHandlers() {
 app.whenReady().then(async () => {
   // 不再自动弹出工作区选择对话框，让欢迎页面处理
   ensureWorkspace(); // 只确保有默认工作区
+  initKBIndex();
+  await rebuildKBIndex();
   createWindow();
   registerIpcHandlers();
   // 等待页面加载完成后通知渲染进程工作区路径，以触发数据刷新
@@ -378,6 +387,9 @@ ipcMain.handle('fs:selectWorkspace', async () => {
       const newWorkspaceRoot = result.filePaths[0];
       workspaceRoot = newWorkspaceRoot;
       fs.mkdirSync(workspaceRoot, { recursive: true });
+      // 更新 KB 目录并重建索引
+      kbDir = path.join(workspaceRoot, '.kb');
+      fs.mkdirSync(kbDir, { recursive: true });
       
       // 保存新的工作区路径
       const cfgPath = path.join(app.getPath('userData'), 'workspace-config.json');
@@ -389,6 +401,9 @@ ipcMain.handle('fs:selectWorkspace', async () => {
       
       // 通知渲染进程工作区已更改
       notifyWorkspaceOpened();
+      // 重建索引
+      initKBIndex();
+      await rebuildKBIndex();
       
       return { success: true, path: workspaceRoot };
     }
@@ -422,6 +437,7 @@ ipcMain.handle('fs:writeJsonFile', async (_event, id: string, content: string) =
       return { success: false, error: 'JSON 格式错误' } as any;
     }
     fs.writeFileSync(jsonPath, content, 'utf8');
+    try { await updateKBIndexForId(id); } catch {}
     return { success: true };
   } catch (e) {
     console.error('fs:writeJsonFile failed:', e);
@@ -451,6 +467,7 @@ ipcMain.handle('fs:createJsonFile', async (_event, copy: any) => {
       pptContent: copy.pptContent || '',
     };
     fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
+    try { await updateKBIndexForId(fileName.replace(/\.json$/, '')); } catch {}
     return { success: true, fileName: fileName.replace(/\.json$/, '') };
   } catch (err) {
     console.error('Error fs:createJsonFile:', err);
@@ -485,6 +502,8 @@ ipcMain.handle('fs:renameJsonFile', async (_event, oldId: string, newName: strin
       return { success: true, id: oldId };
     }
     fs.renameSync(oldPath, newPath);
+    // 更新索引：移除旧ID，添加新ID
+    try { deleteFromKBIndex(oldId); await updateKBIndexForId(finalBase); } catch {}
     return { success: true, id: finalBase };
   } catch (err) {
     console.error('Error fs:renameJsonFile:', err);
@@ -499,6 +518,7 @@ ipcMain.handle('fs:deleteJsonFile', async (_event, id: string) => {
     if (fs.existsSync(jsonPath)) {
       fs.unlinkSync(jsonPath);
     }
+    try { deleteFromKBIndex(id); } catch {}
     return { success: true };
   } catch (err) {
     console.error('Error fs:deleteJsonFile:', err);
@@ -551,6 +571,152 @@ ipcMain.handle('fs:saveImage', async (_event, imageBuffer: Uint8Array, fileName:
     };
   }
 });
+
+// ================= KB 索引与 IPC =================
+function initKBIndex() {
+  // 仅从磁盘载入现有索引到内存，不使用第三方索引
+  try {
+    const idxPath = path.join(kbDir, 'index.json');
+    if (fs.existsSync(idxPath)) {
+      const raw = fs.readFileSync(idxPath, 'utf8');
+      const obj = JSON.parse(raw || '{}');
+      if (Array.isArray(obj?.docs)) {
+        kbIndexData = { version: 1, docs: obj.docs };
+      } else {
+        kbIndexData = { version: 1, docs: [] };
+      }
+    } else {
+      kbIndexData = { version: 1, docs: [] };
+    }
+  } catch (e) {
+    console.warn('Load KB index failed:', e);
+    kbIndexData = { version: 1, docs: [] };
+  }
+}
+
+async function rebuildKBIndex() {
+  try {
+    if (!fs.existsSync(workspaceRoot)) return;
+    const files = fs.readdirSync(workspaceRoot, { withFileTypes: true })
+      .filter(f => f.isFile() && f.name.endsWith('.json'))
+      .map(f => f.name.replace(/\.json$/, ''));
+    kbIndexData.docs = [];
+    for (const id of files) {
+      await updateKBIndexForId(id);
+    }
+    saveKBIndex();
+  } catch (e) {
+    console.error('rebuildKBIndex failed:', e);
+  }
+}
+
+function saveKBIndex() {
+  try {
+    const idxPath = path.join(kbDir, 'index.json');
+    fs.writeFileSync(idxPath, JSON.stringify({ version: 1, docs: kbIndexData.docs }, null, 2), 'utf8');
+  } catch (e) {
+    console.error('saveKBIndex failed:', e);
+  }
+}
+
+async function updateKBIndexForId(id: string) {
+  try {
+    const jsonPath = path.join(workspaceRoot, `${id}.json`);
+    if (!fs.existsSync(jsonPath)) return;
+    const raw = fs.readFileSync(jsonPath, 'utf8');
+    let meta: any = {};
+    try { meta = JSON.parse(raw || '{}'); } catch {}
+    const markdownStr = typeof meta.richContent === 'string' ? meta.richContent : '';
+    // 仅使用 richContent 作为全文内容，不再对节点进行转换或合并
+    const doc: KBDoc = buildKBDoc(id, markdownStr);
+    const idx = kbIndexData.docs.findIndex(d => d.id === id);
+    if (idx >= 0) kbIndexData.docs[idx] = doc; else kbIndexData.docs.push(doc);
+    saveKBIndex();
+  } catch (e) {
+    console.error('updateKBIndexForId failed:', e);
+  }
+}
+
+function deleteFromKBIndex(id: string) {
+  kbIndexData.docs = kbIndexData.docs.filter(d => d.id !== id);
+  saveKBIndex();
+}
+
+function escapeHtml(s: string): string {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function makeSnippet(text: string, q: string): { snippet: string; snippetHtml: string } {
+  const haystack = String(text || '');
+  const lower = haystack.toLowerCase();
+  const idx = lower.indexOf(q);
+  const windowSize = 80; // 片段左右各取80字符
+  if (idx === -1) {
+    const base = haystack.slice(0, windowSize);
+    const esc = escapeHtml(base);
+    return { snippet: base, snippetHtml: esc };
+  }
+  const start = Math.max(0, idx - windowSize);
+  const end = Math.min(haystack.length, idx + q.length + windowSize);
+  let base = haystack.slice(start, end);
+  // 添加省略号
+  if (start > 0) base = '… ' + base;
+  if (end < haystack.length) base = base + ' …';
+  const esc = escapeHtml(base);
+  const qRegex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  const highlighted = esc.replace(qRegex, '<mark>$&</mark>');
+  return { snippet: base, snippetHtml: highlighted };
+}
+
+function searchKB(query: string): Array<{ id: string; title?: string; snippet?: string; snippetHtml?: string }> {
+  // 纯文本搜索：不使用分词与索引，仅对子串进行大小写不敏感匹配，并返回片段与高亮
+  const qRaw = String(query || '').trim();
+  const q = qRaw.toLowerCase();
+  if (!q) return [];
+  try {
+    const results = kbIndexData.docs
+      .filter(d => {
+        const title = String(d.title || '').toLowerCase();
+        const text = String(d.text || '').toLowerCase();
+        return title.includes(q) || text.includes(q);
+      })
+      .map(d => {
+        const titleStr = String(d.title || '');
+        const textStr = String(d.text || '');
+        const titleLower = titleStr.toLowerCase();
+        const inTitle = titleLower.includes(q);
+        const { snippet, snippetHtml } = inTitle
+          ? makeSnippet(titleStr, q)
+          : makeSnippet(textStr, q);
+        return { id: d.id, title: d.title, snippet, snippetHtml };
+      });
+    return results;
+  } catch (e) {
+    console.error('searchKB failed:', e);
+    return [];
+  }
+}
+
+
+ipcMain.handle('kb:indexAll', async () => {
+  try { await rebuildKBIndex(); return { success: true, count: kbIndexData.docs.length }; }
+  catch (e) { return { success: false, error: String(e) }; }
+});
+
+ipcMain.handle('kb:updateIndex', async (_e, id: string) => {
+  try { await updateKBIndexForId(id); return { success: true }; }
+  catch (e) { return { success: false, error: String(e) }; }
+});
+
+ipcMain.handle('kb:search', async (_e, query: string) => {
+  try { return searchKB(query); } catch { return []; }
+});
+
 
 // 通用媒体文件保存：将音频、视频等媒体文件保存到对应的文件夹
 ipcMain.handle('fs:saveMedia', async (_event, mediaBuffer: Uint8Array, fileName: string, mediaType: 'video' | 'audio' | 'image') => {

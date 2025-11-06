@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 选择媒体文件功能（支持视频、音频）
     selectMediaFile: (mediaType: 'video' | 'audio') => ipcRenderer.invoke('fs:selectMediaFile', mediaType),
   },
+  kb: {
+    indexAll: () => ipcRenderer.invoke('kb:indexAll'),
+    updateIndex: (id: string) => ipcRenderer.invoke('kb:updateIndex', id),
+    search: (query: string) => ipcRenderer.invoke('kb:search', query),
+  },
   // AI 生成功能
   ai: {
     generate: (prompt: string, option: string, command?: string) => ipcRenderer.invoke('ai:generate', prompt, option, command),
@@ -101,6 +106,11 @@ declare global {
         selectMediaFile: (mediaType: 'video' | 'audio') => Promise<{ success: boolean; filePath?: string; fileUrl?: string; fileName?: string; error?: string }>;
         
 
+      };
+      kb: {
+        indexAll: () => Promise<{ success: boolean; count?: number; error?: string }>;
+        updateIndex: (id: string) => Promise<{ success: boolean; error?: string }>;
+        search: (query: string) => Promise<Array<{ id: string; title?: string; snippet?: string; snippetHtml?: string }>>;
       };
       ai: {
         generate: (prompt: string, option: string, command?: string) => Promise<{ success: boolean; content?: string; error?: string }>;

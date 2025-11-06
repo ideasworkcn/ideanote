@@ -81,13 +81,16 @@ export default function NotionSidebar({
   onAddCopy,
   handleCopyAction,
 }: NotionSidebarProps) {
-  // 左侧与文件系统一致：直接使用传入的顺序（fs:listJsonFiles 已按修改时间降序）
-  const renderName = (c: Copy) => c.id;
+  // 左侧与文件系统一致：搜索结果显示标题或ID
+  const renderName = (c: Copy) => c.title || c.id;
 
   // 重命名对话框状态
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  // KB 索引重建状态
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexInfo, setReindexInfo] = useState<string | null>(null);
 
   const openRename = (copy: Copy) => {
     setRenameTargetId(copy.id);
@@ -128,6 +131,40 @@ export default function NotionSidebar({
                   autoFocus
                 />
               </div>
+              {/* 重建索引按钮（位于搜索框下方） */}
+              <div className="flex items-center justify-between">
+                <button
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 ${reindexing ? 'bg-gray-200 text-gray-600 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  disabled={reindexing}
+                  onClick={async () => {
+                    try {
+                      setReindexing(true);
+                      setReindexInfo(null);
+                      const api = (window as any).electronAPI;
+                      if (api?.kb?.indexAll) {
+                        const res = await api.kb.indexAll();
+                        if (res?.success) {
+                          setReindexInfo(`索引已重建（${res.count ?? 0} 条文档）`);
+                        } else {
+                          setReindexInfo(`重建失败：${res?.error ?? '未知错误'}`);
+                        }
+                      } else {
+                        setReindexInfo('重建失败：KB 接口不可用');
+                      }
+                    } catch (err: any) {
+                      setReindexInfo(`重建失败：${String(err)}`);
+                    } finally {
+                      setReindexing(false);
+                    }
+                  }}
+                  title="重建知识库索引"
+                >
+                  {reindexing ? '正在重建...' : '重建索引'}
+                </button>
+                {reindexInfo && (
+                  <span className="text-xs text-gray-500 ml-2 truncate" title={reindexInfo}>{reindexInfo}</span>
+                )}
+              </div>
               <div className="max-h-[280px] overflow-y-auto rounded-lg">
                 {searchResults.map((copy) => (
                   <div
@@ -139,6 +176,9 @@ export default function NotionSidebar({
                     }}
                   >
                     <div className="font-medium text-gray-900 text-sm">{renderName(copy)}</div>
+                    {copy.previewHtml && (
+                      <div className="text-xs text-gray-600 line-clamp-3" dangerouslySetInnerHTML={{ __html: copy.previewHtml }} />
+                    )}
                     <div className="text-xs text-gray-500 flex items-center gap-1.5">
                       <Folder className="h-3 w-3" />
                       {workspaceId}

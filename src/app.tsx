@@ -45,15 +45,26 @@ const App: React.FC = () => {
   }, []);
 
   // 搜索处理：在 copies 中查找
-  const handleSearch = useCallback((term: string) => {
+  const handleSearch = useCallback(async (term: string) => {
     setSearchTerm(term);
-    if (term.trim()) {
-      const termLower = term.toLowerCase();
+    const q = term.trim();
+    if (!q) { setSearchResults([]); return; }
+    try {
+      const api = (window as any).electronAPI;
+      if (api && api.kb && api.kb.search) {
+        const res: Array<{ id: string; title?: string; snippetHtml?: string }> = await api.kb.search(q);
+        const mapped: Copy[] = (res || []).map(r => ({ id: r.id, title: r.title, previewHtml: r.snippetHtml }));
+        setSearchResults(mapped);
+        return;
+      }
+      // 回退到旧逻辑（仅按 id 匹配）
+      const termLower = q.toLowerCase();
       const results = (copies || [])
         .filter(c => String(c.id).toLowerCase().includes(termLower))
         .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }));
       setSearchResults(results);
-    } else {
+    } catch (e) {
+      console.error('Search failed:', e);
       setSearchResults([]);
     }
   }, [copies]);

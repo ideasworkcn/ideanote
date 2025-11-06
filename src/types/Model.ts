@@ -1,5 +1,6 @@
 export interface Copy {
   id: string;
+  title?: string;
   content?: string;
   pxh?: number;
   status?: string;
@@ -7,6 +8,7 @@ export interface Copy {
   modifiedAt?: Date;
   richContent?: string;
   pptContent?: string;
+  previewHtml?: string;
 }
 
 export interface CopyItem {
