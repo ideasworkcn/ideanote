@@ -870,7 +870,7 @@ async function ensureTextSplitter() {
   }
 }
 
-async function indexVectorsForId(id: string) {
+async function indexVectorsForId(id: string): Promise<number> {
   try {
     const jsonPath = path.join(workspaceRoot, `${id}.json`);
     if (!fs.existsSync(jsonPath)) return;
@@ -888,6 +888,7 @@ async function indexVectorsForId(id: string) {
     kbVectorData.items = kbVectorData.items.filter(it => it.id !== id);
 
     let chunkIndex = 0;
+    let processed = 0;
     for (const chunk of chunks) {
       const content = typeof chunk === 'string' ? chunk : (chunk?.pageContent || '');
       if (!content) { chunkIndex++; continue; }
@@ -895,14 +896,17 @@ async function indexVectorsForId(id: string) {
         const out = await pipe(content, { pooling: 'mean', normalize: true });
         const vec = ensureNumberArray(out?.data?.[0]);
         kbVectorData.items.push({ id, chunkIndex, content, vector: vec });
+        processed++;
       } catch (e) {
         console.warn(`Embedding failed for ${id}#${chunkIndex}:`, e);
       }
       chunkIndex++;
     }
     saveKBVectorIndex();
+    return processed;
   } catch (e) {
     console.error('indexVectorsForId failed:', e);
+    return 0;
   }
 }
 
@@ -913,12 +917,24 @@ async function rebuildVectorIndex() {
       .filter(f => f.isFile() && f.name.endsWith('.json'))
       .map(f => f.name.replace(/\.json$/, ''));
     kbVectorData.items = [];
+    // 广播开始事件
+    broadcast('kb:vectorIndex', { type: 'start', totalFiles: files.length });
+    let processedFiles = 0;
+    let totalChunks = 0;
     for (const id of files) {
-      await indexVectorsForId(id);
+      const count = await indexVectorsForId(id);
+      processedFiles++;
+      totalChunks += count;
+      // 广播进度事件（按文件粒度）
+      const percent = files.length ? Math.round((processedFiles / files.length) * 100) : 100;
+      broadcast('kb:vectorIndex', { type: 'progress', file: id, processedFiles, totalFiles: files.length, percent, fileChunks: count, totalChunks });
     }
     saveKBVectorIndex();
+    // 广播完成事件
+    broadcast('kb:vectorIndex', { type: 'done', totalFiles: files.length, totalItems: kbVectorData.items.length, totalChunks });
   } catch (e) {
     console.error('rebuildVectorIndex failed:', e);
+    broadcast('kb:vectorIndex', { type: 'error', message: String(e || 'unknown error') });
   }
 }
 

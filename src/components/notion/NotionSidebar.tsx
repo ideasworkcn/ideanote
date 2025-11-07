@@ -113,6 +113,8 @@ export default function NotionSidebar({
   // 聊天对话标题右侧：向量索引按钮状态
   const [chatVecIndexing, setChatVecIndexing] = useState(false);
   const [chatVecIndexInfo, setChatVecIndexInfo] = useState<string | null>(null);
+  // 向量索引进度（来自主进程广播）
+  const [vectorProgress, setVectorProgress] = useState<{ type?: string; percent?: number; totalFiles?: number; processedFiles?: number; file?: string; fileChunks?: number; totalChunks?: number; totalItems?: number; message?: string } | null>(null);
 
   useEffect(() => {
     const api = (window as any).electronAPI;
@@ -123,6 +125,37 @@ export default function NotionSidebar({
     api.on('kb:modelDownload', handler);
     return () => {
       try { api.removeListener('kb:modelDownload', handler); } catch {}
+    };
+  }, []);
+
+  // 订阅向量索引进度事件
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (!api?.on || !api?.removeListener) return;
+    const handler = (_event: any, payload: any) => {
+      setVectorProgress(payload || null);
+      if (payload?.type === 'done') {
+        setVecIndexing(false);
+        setChatVecIndexing(false);
+        if (typeof payload?.totalItems === 'number') {
+          setVecIndexInfo(`向量索引已重建（片段数：${payload.totalItems}）`);
+          setChatVecIndexInfo('向量索引已更新');
+        } else {
+          setVecIndexInfo('向量索引已重建');
+          setChatVecIndexInfo('向量索引已更新');
+        }
+      }
+      if (payload?.type === 'error') {
+        const msg = payload?.message || '未知错误';
+        setVecIndexInfo(`重建失败：${msg}`);
+        setChatVecIndexInfo(`重建失败：${msg}`);
+        setVecIndexing(false);
+        setChatVecIndexing(false);
+      }
+    };
+    api.on('kb:vectorIndex', handler);
+    return () => {
+      try { api.removeListener('kb:vectorIndex', handler); } catch {}
     };
   }, []);
 
@@ -228,6 +261,19 @@ export default function NotionSidebar({
                 )}
                 {vecIndexInfo && (
                   <span className="text-xs text-gray-500 ml-2 truncate" title={vecIndexInfo}>{vecIndexInfo}</span>
+                )}
+                {/* 向量索引进度条 */}
+                {vectorProgress && vectorProgress.type !== 'done' && (
+                  <div className="ml-2 flex items-center gap-2" title={`向量索引进度 ${vectorProgress.percent ?? 0}%`}>
+                    <span className="text-xs text-gray-600">
+                      向量索引 {vectorProgress.processedFiles ?? 0}/{vectorProgress.totalFiles ?? 0}
+                      {typeof vectorProgress.percent === 'number' ? `（${vectorProgress.percent}%）` : ''}
+                      {vectorProgress.file ? ` · 当前：${vectorProgress.file}` : ''}
+                    </span>
+                    <div className="w-24 h-1.5 bg-gray-200 rounded">
+                      <div className="h-1.5 bg-blue-600 rounded" style={{ width: `${Math.max(0, Math.min(100, vectorProgress.percent || 0))}%` }} />
+                    </div>
+                  </div>
                 )}
               </div>
               <div className="max-h-[280px] overflow-y-auto rounded-lg">
@@ -445,6 +491,23 @@ export default function NotionSidebar({
                   >
                     重建向量索引
                   </button>
+                  {chatVecIndexInfo && (
+                    <span className="ml-2 text-xs text-gray-600 truncate max-w-[140px]" title={chatVecIndexInfo}>
+                      {chatVecIndexInfo}
+                    </span>
+                  )}
+                  {/* 对话右侧也显示进度（若存在） */}
+                  {vectorProgress && vectorProgress.type !== 'done' && (
+                    <div className="flex items-center gap-2" title={`向量索引进度 ${vectorProgress.percent ?? 0}%`}>
+                      <span className="text-xs text-gray-600">
+                        {vectorProgress.processedFiles ?? 0}/{vectorProgress.totalFiles ?? 0}
+                        {typeof vectorProgress.percent === 'number' ? `（${vectorProgress.percent}%）` : ''}
+                      </span>
+                      <div className="w-24 h-1.5 bg-gray-200 rounded">
+                        <div className="h-1.5 bg-blue-600 rounded" style={{ width: `${Math.max(0, Math.min(100, vectorProgress.percent || 0))}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </DialogHeader>
