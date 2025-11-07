@@ -94,3 +94,12 @@ body {
   }
 }
 
+/* 隐藏滚动条但保留滚动（跨浏览器） */
+.scrollbar-none {
+  -ms-overflow-style: none; /* IE 和旧版 Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;            /* Chrome/Safari/WebKit */
+}
+

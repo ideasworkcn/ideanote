@@ -461,10 +461,10 @@ const App: React.FC = () => {
   }, [toggleFocusMode]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {showWelcome ? (
-        <div className="flex w-full">
-          <div className="w-72 border-r border-gray-200 bg-white">
+        <div className="flex w-full h-full">
+          <div className="w-72 h-full min-h-0 overflow-hidden border-r border-gray-200 bg-white">
             <NotionSidebar 
               searchDialogOpen={searchDialogOpen}
               setSearchDialogOpen={setSearchDialogOpen}

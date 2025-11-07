@@ -141,7 +141,7 @@ export default function NotionSidebar({
   };
 
   return (
-    <div className="w-full p-3 flex flex-col">
+    <div className="w-full h-full min-h-0 p-3 flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 mb-3">
         <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
           <DialogTrigger asChild>
@@ -470,7 +470,7 @@ export default function NotionSidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overscroll-contain overflow-y-auto scroll-smooth scrollbar-none">
         {loading ? (
           <ListSkeleton />
         ) : (
@@ -488,7 +488,7 @@ export default function NotionSidebar({
                 }`}
                 onClick={(e) => handleCopyClick(e, copy.id)}
               >
-                <div className='truncate max-w-[160px] text-sm text-gray-800 font-medium'>
+                <div className='truncate max-w-[240px] text-sm text-gray-800 font-medium'>
                   {renderName(copy)}
                 </div>
                 <div className='opacity-0 group-hover:opacity-100 transition-opacity duration-150'>
