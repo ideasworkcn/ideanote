@@ -1,4 +1,4 @@
-import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, WrapText } from "lucide-react";
+import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, WrapText, AlignJustify } from "lucide-react";
 import { useEditor } from "novel";
 import { CommandGroup, CommandItem, CommandSeparator } from "@/components/ui/command";
 
@@ -23,6 +23,11 @@ const options = [
     value: "longer",
     label: "文稿扩写",
     icon: WrapText,
+  },
+  {
+    value: "format",
+    label: "内容排版",
+    icon: AlignJustify,
   },
 ];
 

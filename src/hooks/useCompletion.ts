@@ -70,6 +70,17 @@ export function useCompletion({
         console.log('使用 Electron IPC API 进行流式处理');
         
         let fullResponse = '';
+        const selectedOption = options?.body?.option as string | undefined;
+
+        const unwrapFencedMarkdown = (text: string) => {
+          // 仅当整个内容被一个顶层 ``` 包裹时去除
+          const fenceStart = /^\s*```(?:[a-zA-Z]+)?\s*\n/;
+          const fenceEnd = /\n```\s*$/;
+          if (fenceStart.test(text) && fenceEnd.test(text)) {
+            return text.replace(fenceStart, '').replace(fenceEnd, '');
+          }
+          return text;
+        };
         
         // 设置流式数据处理
         const handleStreamChunk = (_event: any, chunk: string) => {
@@ -82,14 +93,17 @@ export function useCompletion({
         };
 
         const handleStreamComplete = () => {
-          setCompletion(fullResponse);
+          // 当为内容排版或通用编辑时，去除顶部代码块包裹
+          const shouldUnwrap = selectedOption === 'format' || selectedOption === 'improve' || selectedOption === 'zap' || selectedOption === 'generate';
+          const normalized = shouldUnwrap ? unwrapFencedMarkdown(fullResponse) : fullResponse;
+          setCompletion(normalized);
           
           if (onSuccess) {
-            onSuccess(fullResponse);
+            onSuccess(normalized);
           }
           
           if (onFinish) {
-            onFinish(fullResponse);
+            onFinish(normalized);
           }
           cleanup();
         };
@@ -172,14 +186,26 @@ export function useCompletion({
           }
         }
 
-        setCompletion(fullResponse);
+        // HTTP 分支也执行规范化
+        const unwrapFencedMarkdown = (text: string) => {
+          const fenceStart = /^\s*```(?:[a-zA-Z]+)?\s*\n/;
+          const fenceEnd = /\n```\s*$/;
+          if (fenceStart.test(text) && fenceEnd.test(text)) {
+            return text.replace(fenceStart, '').replace(fenceEnd, '');
+          }
+          return text;
+        };
+        const selectedOption = options?.body?.option as string | undefined;
+        const shouldUnwrap = selectedOption === 'format' || selectedOption === 'improve' || selectedOption === 'zap' || selectedOption === 'generate';
+        const normalized = shouldUnwrap ? unwrapFencedMarkdown(fullResponse) : fullResponse;
+        setCompletion(normalized);
         
         if (onSuccess) {
-          onSuccess(fullResponse);
+          onSuccess(normalized);
         }
         
         if (onFinish) {
-          onFinish(fullResponse);
+          onFinish(normalized);
         }
       }
 

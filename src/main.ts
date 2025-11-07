@@ -1365,6 +1365,18 @@ ipcMain.handle('ai:generate', async (_event, prompt: string, option: string, com
           "润色文案,修复语法和拼写错误，返回需要修改语法和拼写的点，无需返回完整文本\n";
         userContent = `现有文本是：${prompt}`;
         break;
+      case "format":
+        systemContent = BASE_ROLE +
+          "根据输入的文稿进行内容排版与结构优化。要求：\n" +
+          "- 保留原意，不删改信息；\n" +
+          "- 使用 Markdown 进行结构化输出；\n" +
+          "- 合理添加标题层级（H2/H3）、列表、加粗重点、引用块；\n" +
+          "- 将长段落按语义换行，提升可读性；\n" +
+          "- 如有代码或命令，使用代码块；\n" +
+          "- 不要使用三个反引号( ``` )或代码块包裹整体输出；\n" +
+          "仅返回排版后的 Markdown。";
+        userContent = `现有文本是：${prompt}`;
+        break;
       case "zap":
         systemContent = BASE_ROLE + 
           "根据输入的文稿和要求进行文本修改" + 
@@ -1470,7 +1482,8 @@ ipcMain.handle('ai:generateStream', async (event, prompt: string, option: string
       longer: { role: "system", content: BASE_ROLE + "根据输入的文稿进行文本续写，要求文本正式，内容精简严肃，只返回续写的内容。" },
       fix: { role: "system", content: BASE_ROLE + "润色文案,修复语法和拼写错误，返回需要修改语法和拼写的点，无需返回完整文本\n" },
       zap: { role: "system", content: BASE_ROLE + "根据输入的文稿和要求进行文本修改在适当的时候使用Markdown格式。" },
-      qa: { role: "system", content: "你是一个严谨的知识库问答助手。仅根据提供的上下文回答问题；若上下文没有答案，请明确说明；保持回答简洁，必要时使用项目符号或保持换行。" }
+      qa: { role: "system", content: "你是一个严谨的知识库问答助手。仅根据提供的上下文回答问题；若上下文没有答案，请明确说明；保持回答简洁，必要时使用项目符号或保持换行。" },
+      format: { role: "system", content: BASE_ROLE + "根据输入的文稿进行内容排版与结构优化。要求：\n- 保留原意，不删改信息；\n- 使用 Markdown 进行结构化输出；\n- 合理添加标题层级（H2/H3）、列表、加粗重点、引用块；\n- 将长段落按语义换行，提升可读性；\n- 如有代码或命令，使用代码块；\n- 不要使用三个反引号( ``` )或代码块包裹整体输出；\n仅返回排版后的 Markdown。" }
     };
 
     const systemMessage = messageMap[option as keyof typeof messageMap] || messageMap.generate;
