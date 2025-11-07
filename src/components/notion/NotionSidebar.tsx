@@ -229,7 +229,7 @@ export default function NotionSidebar({
                   {reindexing ? '正在重建...' : '重建索引'}
                 </button>
                 <button
-                  className={`ml-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 ${vecIndexing ? 'bg-gray-200 text-gray-600 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  className={`hidden ml-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 ${vecIndexing ? 'bg-gray-200 text-gray-600 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
                   disabled={vecIndexing}
                   onClick={async () => {
                     try {
@@ -304,7 +304,7 @@ export default function NotionSidebar({
                 )}
               </div>
               {/* 简易知识库问答 */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="hidden mt-3 pt-3 border-t border-gray-200">
                 <div className="text-sm font-semibold text-gray-900 mb-2">知识库搜索</div>
                 <div className="flex items-center gap-2">
                   <Input

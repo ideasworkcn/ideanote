@@ -1066,10 +1066,9 @@ ipcMain.handle('kb:vectorSearch', async (_e, query: string, topN: number = 3) =>
 
 ipcMain.handle('kb:answer', async (_e, question: string, topN: number = 3) => {
   try {
-    // 首次使用若无向量索引，则自动重建一次，避免每次都为空
-    if (!kbVectorData.items || kbVectorData.items.length === 0) {
-      await rebuildVectorIndex();
-    }
+    // 不再在每次问答时自动重建向量索引，避免频繁重建导致性能问题。
+    // 若向量索引为空，直接返回空检索结果，并由前端提示用户手动重建。
+    // 也可在后台异步尝试一次重建，但此处保持显式控制。
     const results = await vectorSearch(question, topN);
     const context = results.map(r => r.content).join('\n');
     const prompt = `基于以下上下文回答问题：\n${context}\n问题：${question}\n回答：`;

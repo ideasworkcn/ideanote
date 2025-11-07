@@ -115,7 +115,7 @@ const TailwindAdvancedEditor = ({
   showShare = true
 }: TailwindAdvancedEditorProps) => {
   const [initialContent, setInitialContent] = useState<null | JSONContent>(null);
-  const [saveStatus, setSaveStatus] = useState("unSaved");
+  const [saveStatus, setSaveStatus] = useState("未保存");
   const [charsCount, setCharsCount] = useState<number>(0);
   const [editorInstance, setEditorInstance] = useState<EditorInstance | null>(null); // 新增状态
   const [editorReady, setEditorReady] = useState(false); // 编辑器是否准备就绪
@@ -252,7 +252,7 @@ const TailwindAdvancedEditor = ({
         }
       }, 0);
       
-      setSaveStatus("unSaved");
+      setSaveStatus("未保存");
     },
     500 // 500ms防抖延迟
   );

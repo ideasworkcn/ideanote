@@ -168,8 +168,10 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
 
 /* Novel-style code blocks - 已由 highlight.js 处理，删除冲突样式 */
 pre {
-  background: #1f2937;
-  color: #f8fafc;
+  /* background: #1f2937; */
+  background: #F9FAFB;
+  
+  /* color: #f8fafc; */
   /* border: 1px solid #e2e8f0; */
   border-radius: 12px;
   padding: 1.5rem;
