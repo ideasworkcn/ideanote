@@ -1,7 +1,7 @@
 {
   "name": "ideanote",
   "productName": "IdeaNote",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "IdeaNote - AI驱动的创意写作工具 by ideaswork",
   "main": "main.js",
   "type": "commonjs",
