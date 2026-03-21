@@ -5,14 +5,16 @@ directories:
 icon: assets/icon.png
 files:
   - dist/**/*
-  - src/**/*
   - index.html
   - assets/**/*
   - package.json
   - main.js
 asar: true
 asarUnpack:
-  - '**/*.{node,dll}'
+  # 只解压真正需要的原生模块
+  - 'node_modules/@xenova/transformers/**/*.node'
+  - 'node_modules/**/*.dll'
+  # - '**/*.{node,dll}'
 mac:
   category: public.app-category.productivity
   target:
@@ -23,6 +25,10 @@ win:
     - target: nsis
       arch: [x64, ia32]
   icon: assets/icon.png
+  # 添加 Windows 特定优化
+  extraResources:
+    - from: assets
+      to: assets
 linux:
   target:
     - target: AppImage
