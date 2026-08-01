@@ -1,0 +1,146 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: 20
+  CSC_IDENTITY_AUTO_DISCOVERY: false
+
+jobs:
+  # ---- macOS Build (x64 + arm64) ----
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Sync version with git tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npm version $VERSION --no-git-tag-version
+        shell: bash
+
+      - name: Build (Vite)
+        run: npm run build
+
+      - name: Build macOS app
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npx electron-builder --mac --x64 --arm64 --publish VERSION=${GITHUB_REF_NAME#v}
+
+      - name: List output files
+        run: ls -R out/electron-builder
+
+      - name: Upload artifacts to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          create_release: true
+          files: |
+            out/electron-builder/*.dmg
+            out/electron-builder/*.dmg.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- Windows Build (x64 + x86) ----
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Sync version with git tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npm version $VERSION --no-git-tag-version
+        shell: bash
+
+      - name: Build (Vite)
+        run: npm run build
+
+      - name: Build Windows app
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npx electron-builder --win --x64 --ia32 --publish never --extraMetadata.version=$VERSION
+
+      - name: List output files
+        run: Get-ChildItem -Recurse out\electron-builder
+
+      - name: Upload artifacts to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          create_release: true
+          files: |
+            out/electron-builder/IdeaNote Setup *.exe
+            out/electron-builder/IdeaNote Setup *.exe.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- Linux Build (x64) ----
+  build-linux:
+    runs-on: ubuntu-latest
+    # Uncomment the line below to skip Linux:
+    # if: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Sync version with git tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npm version $VERSION --no-git-tag-version
+        shell: bash
+
+      - name: Build (Vite)
+        run: npm run build
+
+      - name: Build Linux app
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npx electron-builder --linux --x64 --publish never --extraMetadata.version=$VERSION
+
+      - name: List output files
+        run: ls -R out/electron-builder
+
+      - name: Upload artifacts to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          create_release: true
+          files: |
+            out/electron-builder/*.AppImage
+            out/electron-builder/*.deb
+            out/electron-builder/*.snap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
