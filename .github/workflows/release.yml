@@ -36,14 +36,16 @@ jobs:
         run: |
           npx electron-builder --mac --x64 --arm64 --publish never
 
+      - name: List output files
+        run: ls -R out/electron-builder
+
       - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           create_release: true
           files: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
+            out/electron-builder/*.dmg
+            out/electron-builder/*.dmg.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -70,14 +72,16 @@ jobs:
         run: |
           npx electron-builder --win --x64 --ia32 --publish never
 
+      - name: List output files
+        run: dir /s out\electron-builder
+
       - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           create_release: true
           files: |
-            dist/*.exe
-            dist/*.nsis
-            dist/*.blockmap
+            out/electron-builder/IdeaNote Setup *.exe
+            out/electron-builder/IdeaNote Setup *.exe.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -106,13 +110,16 @@ jobs:
         run: |
           npx electron-builder --linux --x64 --publish never
 
+      - name: List output files
+        run: ls -R out/electron-builder
+
       - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           create_release: true
           files: |
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.snap
+            out/electron-builder/*.AppImage
+            out/electron-builder/*.deb
+            out/electron-builder/*.snap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
