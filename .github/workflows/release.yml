@@ -40,7 +40,8 @@ jobs:
 
       - name: Build macOS app
         run: |
-          npx electron-builder --mac --x64 --arm64 --publish never
+          VERSION=${GITHUB_REF_NAME#v}
+          npx electron-builder --mac --x64 --arm64 --publish VERSION=${GITHUB_REF_NAME#v}
 
       - name: List output files
         run: ls -R out/electron-builder
@@ -82,7 +83,8 @@ jobs:
 
       - name: Build Windows app
         run: |
-          npx electron-builder --win --x64 --ia32 --publish never
+          VERSION=${GITHUB_REF_NAME#v}
+          npx electron-builder --win --x64 --ia32 --publish never --extraMetadata.version=$VERSION
 
       - name: List output files
         run: Get-ChildItem -Recurse out\electron-builder
@@ -126,7 +128,8 @@ jobs:
 
       - name: Build Linux app
         run: |
-          npx electron-builder --linux --x64 --publish never
+          VERSION=${GITHUB_REF_NAME#v}
+          npx electron-builder --linux --x64 --publish never --extraMetadata.version=$VERSION
 
       - name: List output files
         run: ls -R out/electron-builder
