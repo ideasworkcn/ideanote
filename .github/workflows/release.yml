@@ -73,7 +73,7 @@ jobs:
           npx electron-builder --win --x64 --ia32 --publish never
 
       - name: List output files
-        run: dir /s out\electron-builder
+        run: Get-ChildItem -Recurse out\electron-builder
 
       - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2
